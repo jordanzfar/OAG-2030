@@ -1,0 +1,174 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 5%; /* #0D0D0D */
+    --foreground: 0 0% 90%; /* White 90% */
+
+    --card: 0 0% 8%; /* Slightly lighter than background */
+    --card-foreground: 0 0% 90%;
+
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 90%;
+
+    --primary: 30 59% 53%; /* Bronze #CD7F32 */
+    --primary-foreground: 30 50% 10%; /* Darker text for bronze */
+
+    --secondary: 0 0% 30%; /* Gray #4D4D4D */
+    --secondary-foreground: 0 0% 90%;
+
+    --muted: 0 0% 16.5%; /* Darker Gray #2a2a2a */
+    --muted-foreground: 0 0% 60%; /* Lighter gray text */
+
+    --accent: 0 0% 12%; /* Hover/Focus - Slightly lighter gray */
+    --accent-foreground: 0 0% 95%;
+
+    --destructive: 0 72% 51%; /* Red */
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 20%; /* Border color based on #4D4D4D at ~30% opacity */
+    --input: 0 0% 15%; /* Input background based on #4D4D4D at ~20% opacity */
+    --ring: 30 59% 53%; /* Focus ring color (bronze) */
+
+    --radius: 8px; /* Updated border radius */
+
+    --shadow-color: 224 71.4% 4.1%; /* Base color for shadow opacity */
+  }
+
+  .dark {
+    /* Keep the same variables as :root for forced dark mode */
+    --background: 0 0% 5%;
+    --foreground: 0 0% 90%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 90%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 90%;
+    --primary: 30 59% 53%;
+    --primary-foreground: 30 50% 10%;
+    --secondary: 0 0% 30%;
+    --secondary-foreground: 0 0% 90%;
+    --muted: 0 0% 16.5%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 95%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 20%;
+    --input: 0 0% 15%;
+    --ring: 30 59% 53%;
+    --radius: 8px;
+    --shadow-color: 224 71.4% 4.1%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1; /* Enable ligatures */
+  }
+  /* Apply subtle shadow to cards */
+   .card {
+     @apply shadow-md;
+   }
+}
+
+/* Custom styles for react-datepicker in dark mode */
+.react-datepicker {
+  font-family: inherit;
+  background-color: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  border-radius: var(--radius);
+}
+
+.react-datepicker__header {
+  background-color: hsl(var(--card));
+  border-bottom: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+
+.react-datepicker__current-month,
+.react-datepicker-time__header,
+.react-datepicker-year-header {
+  color: hsl(var(--foreground));
+}
+
+.react-datepicker__day-name,
+.react-datepicker__day,
+.react-datepicker__time-name {
+  color: hsl(var(--muted-foreground));
+}
+
+.react-datepicker__day:hover,
+.react-datepicker__month-text:hover,
+.react-datepicker__quarter-text:hover,
+.react-datepicker__year-text:hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+  border-radius: calc(var(--radius) - 4px);
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--in-selecting-range,
+.react-datepicker__day--in-range,
+.react-datepicker__month-text--selected,
+.react-datepicker__month-text--in-selecting-range,
+.react-datepicker__month-text--in-range,
+.react-datepicker__quarter-text--selected,
+.react-datepicker__quarter-text--in-selecting-range,
+.react-datepicker__quarter-text--in-range,
+.react-datepicker__year-text--selected,
+.react-datepicker__year-text--in-selecting-range,
+.react-datepicker__year-text--in-range {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.react-datepicker__day--keyboard-selected,
+.react-datepicker__month-text--keyboard-selected,
+.react-datepicker__quarter-text--keyboard-selected,
+.react-datepicker__year-text--keyboard-selected {
+   background-color: hsl(var(--primary));
+   color: hsl(var(--primary-foreground));
+}
+
+.react-datepicker__day--disabled {
+  color: hsl(var(--muted-foreground));
+  opacity: 0.5;
+}
+
+.react-datepicker__navigation-icon::before {
+  border-color: hsl(var(--foreground));
+}
+
+.react-datepicker__navigation:hover *::before {
+   border-color: hsl(var(--primary));
+}
+
+.react-datepicker__close-icon::after {
+    background-color: hsl(var(--primary));
+}
+
+/* Chart.js Dark Mode Tooltips */
+.chartjs-tooltip {
+  background: hsla(var(--popover), 0.9);
+  border-radius: var(--radius);
+  color: hsl(var(--popover-foreground));
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  box-shadow: var(--tw-shadow); /* Use Tailwind shadow */
+  border: 1px solid hsl(var(--border));
+}
+
+.chartjs-tooltip-key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 5px;
+  border-radius: 2px;
+}
