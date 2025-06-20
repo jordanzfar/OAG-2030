@@ -23,6 +23,8 @@ import ProfilePage from '@/pages/dashboard/ProfilePage';
 import DocumentsPage from '@/pages/dashboard/DocumentsPage';
 import ChatPage from '@/pages/dashboard/ChatPage';
 import NotificationsPage from '@/pages/dashboard/NotificationsPage';
+import AuctionPage from '@/pages/dashboard/AuctionPage';
+
 
 // Páginas de Admin
 import AdminDashboardPage from '@/pages/admin/AdminDashboardPage';
@@ -116,6 +118,27 @@ const InitialRedirect = () => {
 
 // --- Componente Principal de la Aplicación ---
 function App() {
+
+    // ====================================================================
+    // --- INICIO DEL CÓDIGO AÑADIDO PARA FORZAR EL MODO OSCURO ---
+    // ====================================================================
+    useEffect(() => {
+        const root = window.document.documentElement;
+
+        // 1. Añade la clase 'dark' a la etiqueta <html>
+        root.classList.add('dark');
+
+        // 2. (Opcional) Elimina la clase 'light' si existiera
+        root.classList.remove('light');
+    
+    // El array de dependencias vacío `[]` asegura que este efecto
+    // se ejecute solo una vez, cuando la aplicación se monta por primera vez.
+    }, []);
+    // ====================================================================
+    // --- FIN DEL CÓDIGO AÑADIDO ---
+    // ====================================================================
+
+
     return (
         <Router>
             <AuthProvider>
@@ -146,6 +169,8 @@ function App() {
                                 <Route path="documents" element={<DocumentsPage />} />
                                 <Route path="chat" element={<ChatPage />} />
                                 <Route path="notifications" element={<NotificationsPage />} />
+                                <Route path="deposits" element={<DepositsPage />} />
+                                <Route path="auction" element={<AuctionPage />} />
                             </Route>
 
                             {/* Rutas Protegidas del Panel de Administración */}

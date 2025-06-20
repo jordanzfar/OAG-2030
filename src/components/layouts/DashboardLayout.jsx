@@ -15,6 +15,7 @@ const sidebarNavItems = [
     { title: "Panel Principal", href: "/dashboard", icon: LayoutDashboard },
     { title: "Inspecciones", href: "/dashboard/inspections", icon: FileText },
     { title: "Verificación VIN", href: "/dashboard/vin-check", icon: SearchCheck },
+    { title: "Solicitar Puja", href: "/dashboard/auction", icon: HandCoins },
     { title: "Legalización", href: "/dashboard/legalization", icon: FileBadge },
     { title: "Power Buying", href: "/dashboard/power-buying", icon: HandCoins },
     { title: "Depósitos", href: "/dashboard/deposits", icon: Banknote },
@@ -22,6 +23,7 @@ const sidebarNavItems = [
     { title: "Notificaciones", href: "/dashboard/notifications", icon: Bell },
     { title: "Perfil", href: "/dashboard/profile", icon: User },
     { title: "Chat", href: "/dashboard/chat", icon: MessageSquare },
+    
 ];
 
 const DashboardLayout = () => {
