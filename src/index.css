@@ -35,56 +35,55 @@
 
   /* --- TEMA OSCURO (MODIFICADO A BLANCO Y NEGRO) --- */
   .dark {
-    /* Tema "Esencia Opulenta" con fondos más oscuros y bronce ajustado */
+    /* Tema "Esencia Opulenta" (Alto Contraste V3 - Tono Oro Bronce) */
 
-    /* Fondo principal: Se mantiene muy oscuro, casi negro pero con matiz cálido */
-    --background: 30 6% 6%;
-    /* Texto principal: Se mantiene dorado pálido para contraste */
-    --foreground: 45 22% 85%;
+    /* Fondos oscuros (Sin cambios) */
+    --background: 30 6% 4%;
+    --card: 32 6% 7%;
+    --popover: 32 6% 7%;
 
-    /* Componentes como Cards: Aún más oscuro, más cercano al fondo general */
-    --card: 32 6% 9%; /* Modificado: Más oscuro que antes */
-    --card-foreground: 45 22% 85%;
-    --popover: 32 6% 9%; /* Modificado: Más oscuro que antes */
-    --popover-foreground: 45 22% 85%;
+    /* Texto principal (Sin cambios) */
+    --foreground: 45 35% 90%; 
+    --card-foreground: 45 35% 90%; 
+    --popover-foreground: 45 35% 90%; 
 
-    /* Color de Acento Principal: "Bronce Antiguo" con más contraste */
-    --primary: 41 32% 52%; /* Modificado: Ligeramente más vivo y brillante */
-    /* Texto sobre el acento principal: Se mantiene el color de fondo más oscuro */
-    --primary-foreground: 30 6% 6%;
+    /* Color de Acento Principal: Tono "Oro Bronce" con máximo contraste */
+    --primary: 45 50% 62%; /* Modificado: Tono, saturación y luminosidad ajustados */
+    /* Texto sobre el acento principal (Sin cambios) */
+    --primary-foreground: 30 6% 4%;
 
-    /* Componentes secundarios */
-    --secondary: 33 6% 18%; 
-    --secondary-foreground: 45 22% 85%;
+    /* Componentes secundarios (Sin cambios) */
+    --secondary: 33 6% 16%; 
+    --secondary-foreground: 45 35% 90%; 
 
-    /* Texto/elementos "apagados" */
-    --muted: 33 6% 18%;
-    --muted-foreground: 45 5% 53%;
+    /* Texto/elementos "apagados" (Sin cambios) */
+    --muted: 33 6% 16%;
+    --muted-foreground: 45 15% 60%; 
 
-    /* Acento para hovers y estados activos sutiles */
-    --accent: 33 6% 18%;
-    --accent-foreground: 45 22% 85%;
+    /* Acento para hovers (Sin cambios) */
+    --accent: 33 6% 16%;
+    --accent-foreground: 45 35% 90%;
 
-    /* Color para acciones destructivas (se mantiene rojo por UX) */
+    /* Color para acciones destructivas (Sin cambios) */
     --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
 
     /* Bordes, Inputs y Anillo de foco */
-    --border: 33 6% 18%;
-    --input: 33 6% 18%;
-    /* El anillo de foco resalta con el color primario */
-    --ring: 41 32% 52%; /* Modificado: Refleja el nuevo color primario */
+    --border: 33 6% 16%;
+    --input: 33 6% 16%;
+    /* El anillo de foco refleja el nuevo color primario */
+    --ring: 45 50% 62%; /* Modificado */
 
-    /* Radio y Sombra */
+    /* Radio y Sombra (Sin cambios) */
     --radius: 0.5rem;
-    --shadow-color: 30 6% 2%; 
+    --shadow-color: 30 6% 1%; 
 
-    /* Colores para gráficas usando la paleta */
-    --chart-1: 41 32% 52%;   /* Bronce con más contraste */
-    --chart-2: 45 22% 62%;   /* Oro Pálido */
-    --chart-3: 45 5% 53%;    /* Topo Sofisticado */
-    --chart-4: 41 27% 65%;   /* Bronce Claro */
-    --chart-5: 45 5% 40%;    /* Topo Oscuro */
+    /* Colores para gráficas, reflejando el nuevo tono principal */
+    --chart-1: 45 50% 62%;   /* Oro Bronce Principal (Nuevo) */
+    --chart-2: 45 35% 75%;   /* Oro Pálido (Sin cambios) */
+    --chart-3: 45 15% 55%;   /* Topo (Sin cambios) */
+    --chart-4: 45 45% 70%;   /* Oro Claro (Variante del nuevo primario) */
+    --chart-5: 45 5% 40%;    /* Topo Oscuro (Sin cambios) */
 }
 }
 
