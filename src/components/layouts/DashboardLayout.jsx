@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase'; // Importamos supabase directamente para signOut
 import { useToast } from '@/components/ui/use-toast';
 import NotificationsWidget from '@/components/dashboard/NotificationsWidget';
+import logo from '@/assets/OPULENT-BRONZE.png';
 
 const sidebarNavItems = [
     { title: "Panel Principal", href: "/dashboard", icon: LayoutDashboard },
@@ -73,16 +74,13 @@ const DashboardLayout = () => {
             <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="container flex h-16 items-center justify-between">
                     {/* Logo */}
-                    <Link to="/dashboard" className="flex items-center space-x-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
-                            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                            <line x1="10" y1="9" x2="8" y2="9"></line>
-                        </svg>
-                        <span className="font-bold text-foreground">Opulent Auto</span>
-                    </Link>
+                    <Link to="/dashboard" className="flex items-center">
+                            <img 
+                                src={logo} 
+                                alt="Opulent Auto Gallery Logo" 
+                                className="h-12" 
+                            />
+                        </Link>
 
                     {/* Right side: Notifications & User */}
                     <div className="flex items-center space-x-4">

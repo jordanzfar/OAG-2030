@@ -4,9 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
-import { Car, UserPlus, Loader2 } from 'lucide-react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth'; // Solo necesitas este hook
+import { UserPlus, Loader2 } from 'lucide-react';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useNavigate, Link } from 'react-router-dom';
+
+// --- PASO 2.1: Importa la imagen del logo ---
+import logo from '@/assets/OPULENT-BRONZE.png';
 
 const LoginPage = () => {
     // Hooks y estado del formulario
@@ -15,44 +18,27 @@ const LoginPage = () => {
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
     const navigate = useNavigate();
-
-    // --- CORRECCIÓN CLAVE ---
-    // Solo necesitamos la función `signIn` de tu hook de Supabase.
-    // Se elimina la llamada a `useAuth` aquí, porque el login no necesita
-    // leer el estado de autenticación, solo necesita la función para iniciarla.
     const { signIn } = useSupabaseAuth();
-    // Ya no se necesita: const { login, isAuthenticated: isLocalAuth, userRole } = useAuth();
-
-
-    // Se eliminan por completo los `useEffect` que causaban el error.
-    // La redirección ahora se maneja de forma explícita en `handleLogin`.
 
     const handleLogin = async (e) => {
         e.preventDefault();
         setIsLoading(true);
 
-        // Llama a la función `signIn` de tu hook.
-        // Asumimos que esta función devuelve un objeto con una propiedad `error`.
         const { error } = await signIn(email, password);
 
         setIsLoading(false);
 
         if (error) {
-            // Si hay un error de Supabase, lo mostramos.
             toast({
                 variant: "destructive",
                 title: "Error de inicio de sesión",
                 description: error.message || "Email o contraseña incorrectos.",
             });
         } else {
-            // Si el inicio de sesión es exitoso...
             toast({
                 title: "Inicio de Sesión Exitoso",
                 description: "¡Bienvenido de vuelta!",
             });
-            // ...¡NAVEGAMOS! Esta es la pieza clave.
-            // Redirigimos a la raíz ("/"). Tu componente `InitialRedirect` en `App.jsx`
-            // se encargará del resto, llevándote al dashboard correcto.
             navigate('/');
         }
     };
@@ -66,9 +52,20 @@ const LoginPage = () => {
                 className="w-full max-w-md p-8 space-y-6 bg-card rounded-lg shadow-xl border border-border"
             >
                 <div className="text-center">
-                    <Car className="mx-auto h-12 w-12 text-primary" />
-                    <h1 className="text-3xl font-bold mt-4 text-foreground">Opulent Auto Gallery</h1>
-                    <p className="text-muted-foreground">Acceso a la Plataforma</p>
+                    {/* --- PASO 2.2: Reemplaza el ícono y el texto por el logo --- */}
+                    {/* Eliminados:
+                        <Car className="mx-auto h-12 w-12 text-primary" />
+                        <h1 className="text-3xl font-bold mt-4 text-foreground">Opulent Auto Gallery</h1> 
+                    */}
+                    
+                    {/* Agregado: */}
+                    <img 
+                        src={logo} 
+                        alt="Logo de Opulent Auto Gallery" 
+                        className="w-9/5 max-w-xs mx-auto mb-7" 
+                    />
+                    
+                    <p className="text-muted-foreground"></p>
                 </div>
                 
                 <form onSubmit={handleLogin} className="space-y-4">
@@ -119,7 +116,7 @@ const LoginPage = () => {
                 </div>
 
                 <div className="text-center text-xs text-muted-foreground mt-6">
-                    <p>Utiliza tu cuenta registrada para acceder a la plataforma</p>
+                    <p>Olvidaste tu contraseña? Envia un correo a soporte@opulentautogallery.com</p>
                 </div>
             </motion.div>
         </div>

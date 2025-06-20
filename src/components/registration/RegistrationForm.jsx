@@ -93,7 +93,7 @@ const RegistrationForm = ({ onSubmit, control, register, errors, watch, formStat
             className="mt-1"
           />
           <p className="text-xs text-muted-foreground mt-1">
-            Puedes completar esta información más tarde en tu perfil
+            Utiliza tu nombre como en tu identificacion oficial
           </p>
         </div>
 
@@ -109,7 +109,7 @@ const RegistrationForm = ({ onSubmit, control, register, errors, watch, formStat
             className="mt-1"
           />
           <p className="text-xs text-muted-foreground mt-1">
-            Puedes agregar tu email más tarde en tu perfil
+            No podra ser cambiado por tu cuenta una vez registrado
           </p>
         </div>
 
@@ -121,7 +121,7 @@ const RegistrationForm = ({ onSubmit, control, register, errors, watch, formStat
             <Input 
               id="phone" 
               type="tel" 
-              placeholder="555123" 
+              placeholder="Ej: 281-123-4567" 
               {...register("phone")} 
               ref={phoneInputRef}
               className={`${

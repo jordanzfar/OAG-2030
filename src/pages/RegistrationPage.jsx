@@ -102,7 +102,7 @@ const RegistrationPage = () => {
                     <CardHeader className="text-center border-b pb-4">
                         <UserPlus className="mx-auto h-8 w-8 text-primary mb-2" />
                         <CardTitle className="text-2xl">Crear Cuenta</CardTitle>
-                        <CardDescription>Únete a Opulent Auto Gallery</CardDescription>
+                        <CardDescription></CardDescription>
                     </CardHeader>
                     <CardContent className="p-6 md:p-8 relative">
                         <form onSubmit={methods.handleSubmit(handleSubmit)}>
