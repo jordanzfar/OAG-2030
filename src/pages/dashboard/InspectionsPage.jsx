@@ -391,9 +391,9 @@ loadInspections();
                       </p>
                     </div>
                     <span className={`px-2 py-1 rounded text-xs ${
-                      inspection.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      inspection.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-                      'bg-yellow-100 text-yellow-800'
+                      inspection.status === 'completed' ? 'bg-green-400 text-green-950' :
+                      inspection.status === 'scheduled' ? 'bg-blue-400 text-blue-950' :
+                      'bg-yellow-400 text-yellow-950'
                     }`}>
                       {inspection.status === 'completed' ? 'Completada' :
                        inspection.status === 'scheduled' ? 'Programada' : 'Pendiente'}

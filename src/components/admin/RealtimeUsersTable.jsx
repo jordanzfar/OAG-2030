@@ -15,10 +15,10 @@ const RealtimeUsersTable = ({ users, loading, onVerificationUpdate }) => {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      verified: { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-100', label: 'Verificado' },
-      pending: { icon: Clock, color: 'text-yellow-600', bg: 'bg-yellow-100', label: 'Pendiente' },
-      rejected: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-100', label: 'Rechazado' },
-      not_verified: { icon: AlertTriangle, color: 'text-gray-600', bg: 'bg-gray-100', label: 'Sin verificar' }
+      verified: { icon: CheckCircle, color: 'text-green-900', bg: 'bg-green-300', label: 'Verificado' },
+      pending: { icon: Clock, color: 'text-yellow-900', bg: 'bg-yellow-300', label: 'Pendiente' },
+      rejected: { icon: XCircle, color: 'text-red-900', bg: 'bg-red-300', label: 'Rechazado' },
+      not_verified: { icon: AlertTriangle, color: 'text-gray-900', bg: 'bg-gray-300', label: 'Sin verificar' }
     };
 
     const config = statusConfig[status] || statusConfig.not_verified;
@@ -34,14 +34,14 @@ const RealtimeUsersTable = ({ users, loading, onVerificationUpdate }) => {
 
   const getRoleBadge = (role) => {
     const roleConfig = {
-      admin: { color: 'text-purple-600', bg: 'bg-purple-100', label: 'Admin' },
-      client: { color: 'text-blue-600', bg: 'bg-blue-100', label: 'Cliente' },
-      support: { color: 'text-green-600', bg: 'bg-green-100', label: 'Soporte' },
-      validation: { color: 'text-orange-600', bg: 'bg-orange-100', label: 'Validación' },
-      finance: { color: 'text-emerald-600', bg: 'bg-emerald-100', label: 'Finanzas' }
+      admin: { color: 'text-purple-900', bg: 'bg-purple-300', label: 'Admin' },
+      client: { color: 'text-blue-900', bg: 'bg-blue-300', label: 'Cliente' },
+      support: { color: 'text-green-900', bg: 'bg-green-300', label: 'Soporte' },
+      validation: { color: 'text-orange-900', bg: 'bg-orange-300', label: 'Validación' },
+      finance: { color: 'text-emerald-900', bg: 'bg-emerald-300', label: 'Finanzas' }
     };
 
-    const config = roleConfig[role] || { color: 'text-gray-600', bg: 'bg-gray-100', label: role };
+    const config = roleConfig[role] || { color: 'text-gray-900', bg: 'bg-gray-300', label: role };
 
     return (
       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.color}`}>
@@ -178,14 +178,14 @@ const RealtimeUsersTable = ({ users, loading, onVerificationUpdate }) => {
                         onClick={() => promptBuyingPower(user, 'verified')}
                         disabled={user.verification_status === 'verified'}
                       >
-                        <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+                        <CheckCircle className="w-4 h-4 mr-2 text-green-900" />
                         Verificar Usuario
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         onClick={() => handleVerificationUpdate(user.id, 'rejected')}
                         disabled={user.verification_status === 'rejected'}
                       >
-                        <XCircle className="w-4 h-4 mr-2 text-red-600" />
+                        <XCircle className="w-4 h-4 mr-2 text-red-900" />
                         Rechazar Verificación
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
@@ -193,7 +193,7 @@ const RealtimeUsersTable = ({ users, loading, onVerificationUpdate }) => {
                       <DropdownMenuItem 
                         onClick={() => promptBuyingPower(user, user.verification_status)}
                       >
-                        <DollarSign className="w-4 h-4 mr-2 text-blue-600" />
+                        <DollarSign className="w-4 h-4 mr-2 text-blue-900" />
                         Modificar Poder de Compra
                       </DropdownMenuItem>
                     </DropdownMenuContent>

@@ -18,28 +18,28 @@ const VerificationTable = ({
     switch (status) {
       case 'verified':
         return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-900 text-green-300">
             <CheckCircle className="w-3 h-3 mr-1" />
             Verificado
           </span>
         );
       case 'pending':
         return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-800 text-yellow-300">
             <Clock className="w-3 h-3 mr-1" />
             Pendiente
           </span>
         );
       case 'rejected':
         return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-900 text-red-300">
             <XCircle className="w-3 h-3 mr-1" />
             Rechazado
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-800 text-gray-300">
             <AlertTriangle className="w-3 h-3 mr-1" />
             Sin verificar
           </span>

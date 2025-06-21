@@ -1,25 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-// --- INICIO DE LA CORRECCIÓN ---
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'; // Se añade CardDescription
-// --- FIN DE LA CORRECCIÓN ---
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Activity, FileBadge, FileText, MessageSquare, Loader2, ShieldCheck } from 'lucide-react';
+import { Activity, FileBadge, FileText, MessageSquare, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import BuyingPowerWidget from '@/components/dashboard/BuyingPowerWidget';
 import { supabase } from '@/lib/supabase';
+import VerificationBadge from '@/components/dashboard/VerificationBadge';
 
 const DashboardPage = () => {
-    // Asumimos que useAuth ahora también provee userProfile
     const { user, userRole, userProfile } = useAuth();
     
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Verificamos si el usuario está verificado
     const isVerified = userProfile?.verification_status === 'verified';
 
     useEffect(() => {
@@ -75,35 +72,21 @@ const DashboardPage = () => {
             className="space-y-8"
         >
             <div>
-                <h1 className="text-3xl font-bold text-foreground">Panel del Cliente</h1>
-                <p className="text-muted-foreground">Bienvenido a tu panel personal de Opulent Auto Gallery.</p>
+                <div className="flex items-center gap-3">
+                    <h1 className="text-3xl font-bold text-foreground">Panel del Cliente</h1>
+                    {isVerified && <VerificationBadge isVerified={true} />}
+                </div>
+                <p className="text-muted-foreground mt-1">Bienvenido a tu panel personal de Opulent Auto Gallery.</p>
             </div>
             
-            {/* Widget de Poder de Compra en la parte superior */}
-            <div className="relative">
+            {/* Widget de Buying Power ocupando todo el ancho */}
+            <div className="w-full"> 
                 <BuyingPowerWidget />
-                
-                {/* Banda de Verificado (se muestra condicionalmente) */}
-                {isVerified && (
-                     <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: 0.2 }}
-                     >
-                        <Badge 
-                            variant="default" 
-                            className="absolute top-4 right-4 bg-green-600 hover:bg-green-700 border-green-500 text-white"
-                        >
-                            <ShieldCheck className="h-4 w-4 mr-1.5" />
-                            Cuenta Verificada
-                        </Badge>
-                    </motion.div>
-                )}
             </div>
 
-            {/* Grid para las tarjetas de estadísticas pequeñas */}
+            {/* Contenedor para los widgets de estadísticas */}
             {stats && (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"> {/* Ajustado a 4 columnas en pantallas grandes */}
                     {stats.map((stat, index) => (
                         <motion.div
                             key={index}
@@ -111,7 +94,7 @@ const DashboardPage = () => {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3, delay: 0.2 + index * 0.1 }}
                         >
-                            <Card className="bg-card border-border shadow-md hover:shadow-lg transition-shadow h-full">
+                            <Card className="bg-card border-border shadow-md hover:shadow-lg transition-shadow h-full flex flex-col justify-between">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                     <CardTitle className="text-sm font-medium text-muted-foreground">
                                         {stat.title}
@@ -121,7 +104,7 @@ const DashboardPage = () => {
                                 <CardContent>
                                     <div className="text-2xl font-bold text-foreground">{stat.value}</div>
                                     {stat.link && (
-                                        <Button variant="link" size="sm" className="p-0 h-auto text-primary text-xs" asChild>
+                                        <Button variant="link" size="sm" className="p-0 h-auto text-primary text-xs mt-2" asChild>
                                             <Link to={stat.link}>Ver detalles</Link>
                                         </Button>
                                     )}
@@ -132,7 +115,6 @@ const DashboardPage = () => {
                 </div>
             )}
 
-            {/* Sección de Acciones Rápidas (se mantiene igual) */}
             <Card className="bg-card border-border shadow-lg">
                 <CardHeader>
                     <CardTitle className="text-xl text-foreground">Mis Solicitudes Recientes</CardTitle>

@@ -15,9 +15,9 @@ const RealtimeDocumentsTable = ({ documents, loading, onStatusUpdate }) => {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      pending: { icon: AlertTriangle, color: 'text-yellow-600', bg: 'bg-yellow-100', label: 'Pendiente' },
-      approved: { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-100', label: 'Aprobado' },
-      rejected: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-100', label: 'Rechazado' }
+      pending: { icon: AlertTriangle, color: 'text-yellow-900', bg: 'bg-yellow-300', label: 'Pendiente' },
+      approved: { icon: CheckCircle, color: 'text-green-900', bg: 'bg-green-300', label: 'Aprobado' },
+      rejected: { icon: XCircle, color: 'text-red-900', bg: 'bg-red-300', label: 'Rechazado' }
     };
 
     const config = statusConfig[status] || { icon: AlertTriangle, color: 'text-gray-600', bg: 'bg-gray-100', label: status };

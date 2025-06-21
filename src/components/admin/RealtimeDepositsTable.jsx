@@ -15,12 +15,12 @@ const RealtimeDepositsTable = ({ deposits, loading, onStatusUpdate }) => {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      confirmed: { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-100', label: 'Confirmado' },
-      pending: { icon: Clock, color: 'text-yellow-600', bg: 'bg-yellow-100', label: 'Pendiente' },
-      rejected: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-100', label: 'Rechazado' }
+      confirmed: { icon: CheckCircle, color: 'text-green-900', bg: 'bg-green-300', label: 'Confirmado' },
+      pending: { icon: Clock, color: 'text-yellow-900', bg: 'bg-yellow-300', label: 'Pendiente' },
+      rejected: { icon: XCircle, color: 'text-red-900', bg: 'bg-red-300', label: 'Rechazado' }
     };
 
-    const config = statusConfig[status] || { icon: Clock, color: 'text-gray-600', bg: 'bg-gray-100', label: status };
+    const config = statusConfig[status] || { icon: Clock, color: 'text-gray-900', bg: 'bg-gray-300', label: status };
     const Icon = config.icon;
 
     return (
@@ -118,8 +118,8 @@ const RealtimeDepositsTable = ({ deposits, loading, onStatusUpdate }) => {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center space-x-1">
-                    <DollarSign className="h-4 w-4 text-green-600" />
-                    <span className="font-semibold text-green-600">
+                    <DollarSign className="h-4 w-4 text-green-900" />
+                    <span className="font-semibold text-green-900">
                       {parseFloat(deposit.amount).toLocaleString()}
                     </span>
                   </div>
@@ -156,14 +156,14 @@ const RealtimeDepositsTable = ({ deposits, loading, onStatusUpdate }) => {
                         onClick={() => handleStatusChange(deposit.id, 'confirmed')}
                         disabled={deposit.status === 'confirmed'}
                       >
-                        <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+                        <CheckCircle className="w-4 h-4 mr-2 text-green-900" />
                         Confirmar Depósito
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         onClick={() => handleStatusChange(deposit.id, 'rejected')}
                         disabled={deposit.status === 'rejected'}
                       >
-                        <XCircle className="w-4 h-4 mr-2 text-red-600" />
+                        <XCircle className="w-4 h-4 mr-2 text-red-900" />
                         Rechazar Depósito
                       </DropdownMenuItem>
                     </DropdownMenuContent>

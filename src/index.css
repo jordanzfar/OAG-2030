@@ -43,26 +43,28 @@
     --popover: 32 6% 7%;
 
     /* Texto principal (Sin cambios) */
-    --foreground: 45 35% 90%; 
+    --foreground: 45 31% 95%; 
     --card-foreground: 45 35% 90%; 
     --popover-foreground: 45 35% 90%; 
 
     /* Color de Acento Principal: Tono "Oro Bronce" con máximo contraste */
-    --primary: 45 50% 62%; /* Modificado: Tono, saturación y luminosidad ajustados */
+    --primary: 60 1% 27%; /* Modificado: Tono, saturación y luminosidad ajustados */
     /* Texto sobre el acento principal (Sin cambios) */
-    --primary-foreground: 30 6% 4%;
+    --primary-foreground: 45 31% 95%;
 
-    /* Componentes secundarios (Sin cambios) */
+    /* Componentes secundarios (Sin cambios en fondo) */
     --secondary: 33 6% 16%; 
-    --secondary-foreground: 45 35% 90%; 
+    /* Texto sobre componentes secundarios: Cambiado a gris */
+    --secondary-foreground: 0 0% 70%; /* Ajustado a un gris más claro */
 
-    /* Texto/elementos "apagados" (Sin cambios) */
+    /* Texto/elementos "apagados": Cambiado a gris */
     --muted: 33 6% 16%;
-    --muted-foreground: 45 15% 60%; 
+    --muted-foreground: 0 0% 55%; /* Tono de gris más oscuro para texto menos prominente */
 
-    /* Acento para hovers (Sin cambios) */
+    /* Acento para hovers (Sin cambios en fondo) */
     --accent: 33 6% 16%;
-    --accent-foreground: 45 35% 90%;
+    /* Texto sobre el acento de hover: Cambiado a gris */
+    --accent-foreground: 0 0% 75%; /* Gris claro para visibilidad en hover */
 
     /* Color para acciones destructivas (Sin cambios) */
     --destructive: 0 72% 51%;
