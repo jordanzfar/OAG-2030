@@ -15,7 +15,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from '@/components/ui/use-toast';
-import { MapPin, Calendar as CalendarIcon, AlertCircle, Info } from 'lucide-react';
+import { MapPin, Calendar as CalendarIcon, AlertCircle, Info, Download } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useSupabaseData } from '@/hooks/useSupabaseData';
@@ -375,37 +375,53 @@ loadInspections();
           <CardDescription>Estado de tus solicitudes anteriores.</CardDescription>
         </CardHeader>
         <CardContent>
-          {inspections.length > 0 ? (
-            <div className="space-y-3">
-              {inspections.map((inspection) => (
-                <div key={inspection.id} className="p-4 border border-border rounded-lg bg-secondary">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-medium">Stock# {inspection.stock_number}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Inspección: {new Date(inspection.inspection_date).toLocaleDateString()} | 
-                        Subasta: {new Date(inspection.auction_date).toLocaleDateString()}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Estado: <span className="capitalize">{inspection.status}</span>
-                      </p>
+              {inspections.length > 0 ? (
+                <div className="space-y-4"> {/* Cambiado a space-y-4 para mejor espaciado */}
+                  {inspections.map((inspection) => (
+                    <div key={inspection.id} className="p-4 border border-border rounded-lg bg-background hover:bg-secondary/80 transition-colors">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-semibold text-lg text-foreground">Stock# {inspection.stock_number}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Inspección: {new Date(inspection.inspection_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })} | 
+                            Subasta: {new Date(inspection.auction_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}
+                          </p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          inspection.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300' :
+                          inspection.status === 'scheduled' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300' :
+                          'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300'
+                        }`}>
+                          {inspection.status === 'completed' ? 'Completada' :
+                          inspection.status === 'scheduled' ? 'Programada' : 'Pendiente'}
+                        </span>
+                      </div>
+                      
+                      {/* ====== INICIO: Lógica para el botón de descarga ====== */}
+                      {inspection.status === 'completed' && inspection.report_url && (
+                        <div className="mt-4 pt-4 border-t border-border">
+                          <a 
+                            href={inspection.report_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            download // Sugiere al navegador que descargue el archivo
+                          >
+                            <Button variant="outline" className="w-full md:w-auto">
+                              <Download className="mr-2 h-4 w-4" />
+                              Descargar Reporte
+                            </Button>
+                          </a>
+                        </div>
+                      )}
+                      {/* ====== FIN: Lógica para el botón de descarga ====== */}
+
                     </div>
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      inspection.status === 'completed' ? 'bg-green-400 text-green-950' :
-                      inspection.status === 'scheduled' ? 'bg-blue-400 text-blue-950' :
-                      'bg-yellow-400 text-yellow-950'
-                    }`}>
-                      {inspection.status === 'completed' ? 'Completada' :
-                       inspection.status === 'scheduled' ? 'Programada' : 'Pendiente'}
-                    </span>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground italic">No hay inspecciones anteriores registradas.</p>
-          )}
-        </CardContent>
+              ) : (
+                <p className="text-muted-foreground italic text-center py-4">No hay inspecciones anteriores registradas.</p>
+              )}
+            </CardContent>
       </Card>
     </div>
   );
