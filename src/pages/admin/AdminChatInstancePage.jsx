@@ -1,187 +1,248 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, ArrowLeft } from 'lucide-react';
+import { Send, ArrowLeft, Copy, Search } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { motion, AnimatePresence } from 'framer-motion';
+import { useToast } from '@/components/ui/use-toast';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useAdminData } from '@/hooks/useAdminData';
 import { supabase } from '@/lib/supabase';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const AdminChatInstancePage = () => {
-  const { clientId } = useParams();
-  const { user } = useSupabaseAuth();
-  const { sendAdminMessage } = useAdminData();
-  
-  const [clientInfo, setClientInfo] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [loading, setLoading] = useState(true);
+    const { clientId } = useParams();
+    const { user } = useSupabaseAuth();
+    const { sendAdminMessage, updateChatStatus } = useAdminData();
+    const { toast } = useToast();
 
-  useEffect(() => {
-    if (clientId && user) {
-      loadChatData();
-      
-      // Set up real-time subscription for new messages
-      const subscription = supabase
-        .channel(`chat_${clientId}`)
-        .on('postgres_changes', 
-          { 
-            event: 'INSERT', 
-            schema: 'public', 
-            table: 'chat_messages',
-            filter: `or(and(sender_id.eq.${clientId},receiver_id.eq.${user.id}),and(sender_id.eq.${user.id},receiver_id.eq.${clientId}))`
-          }, 
-          (payload) => {
-            setMessages(prev => [...prev, payload.new]);
-          }
-        )
-        .subscribe();
+    // Estados
+    const [clientProfile, setClientProfile] = useState(null);
+    const [messages, setMessages] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [newMessage, setNewMessage] = useState('');
+    const [isSending, setIsSending] = useState(false);
+    const [conversationStatus, setConversationStatus] = useState('pendiente');
+    const [searchTerm, setSearchTerm] = useState('');
+    const scrollAreaRef = useRef(null);
 
-      return () => {
-        subscription.unsubscribe();
-      };
-    }
-  }, [clientId, user]);
+    const scrollToBottom = () => {
+        const scrollViewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+        if (scrollViewport) {
+            setTimeout(() => { scrollViewport.scrollTop = scrollViewport.scrollHeight; }, 100);
+        }
+    };
 
-  const loadChatData = async () => {
-    try {
-      // Load client info
-      const { data: clientData, error: clientError } = await supabase
-        .from('users_profile')
-        .select('*')
-        .eq('user_id', clientId)
-        .single();
+    // Efecto para cargar los datos iniciales
+    useEffect(() => {
+        if (!clientId || !user) {
+            setLoading(false);
+            return;
+        }
 
-      if (clientError) {
-        console.error('Error loading client info:', clientError);
-        setClientInfo({ id: clientId, full_name: 'Cliente Desconocido', email: '' });
-      } else {
-        setClientInfo(clientData);
-      }
+        const loadChatData = async () => {
+            setLoading(true);
+            try {
+                const [
+                    profileResult,
+                    messagesResult,
+                    statusResult,
+                    _
+                ] = await Promise.all([
+                    supabase.from('users_profile').select('user_id, full_name, email, short_id').eq('user_id', clientId).single(),
+                    supabase.from('chat_messages').select('*').or(`and(sender_id.eq.${clientId},receiver_id.eq.${user.id}),and(sender_id.eq.${user.id},receiver_id.eq.${clientId})`).order('created_at', { ascending: true }),
+                    supabase.from('chat_conversations').select('status').eq('client_id', clientId).single(),
+                    supabase.rpc('mark_messages_as_read', { p_client_id: clientId })
+                ]);
 
-      // Load chat messages
-      const { data: messagesData, error: messagesError } = await supabase
-        .from('chat_messages')
-        .select('*')
-        .or(`and(sender_id.eq.${clientId},receiver_id.eq.${user.id}),and(sender_id.eq.${user.id},receiver_id.eq.${clientId})`)
-        .order('created_at', { ascending: true });
+                if (profileResult.error) throw new Error(`Perfil no encontrado: ${profileResult.error.message}`);
+                setClientProfile(profileResult.data);
 
-      if (messagesError) {
-        console.error('Error loading messages:', messagesError);
-      } else {
-        setMessages(messagesData || []);
-      }
-    } catch (error) {
-      console.error('Error loading chat data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+                if (messagesResult.error) throw new Error(`Error al cargar mensajes: ${messagesResult.error.message}`);
+                setMessages(messagesResult.data || []);
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (newMessage.trim() === '' || !clientInfo || !user) return;
+                if (statusResult.data) {
+                    setConversationStatus(statusResult.data.status);
+                }
 
-    const result = await sendAdminMessage(clientId, newMessage);
-    if (result.success) {
-      setNewMessage('');
-      // Message will be added via real-time subscription
-    }
-  };
+            } catch (error) {
+                console.error("Error al cargar datos del chat:", error);
+                toast({ variant: "destructive", title: "Error al Cargar", description: error.message });
+                setClientProfile(null);
+            } finally {
+                setLoading(false);
+                scrollToBottom();
+            }
+        };
 
-  const formatTimestamp = (timestamp) => {
-    return new Date(timestamp).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-  };
+        loadChatData();
+    }, [clientId, user, toast]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground">Cargando chat...</p>
-      </div>
+    // Efecto para las suscripciones en tiempo real
+    useEffect(() => {
+        if (!clientId || !user) return;
+
+        const handleNewMessage = (payload) => {
+             const newMsg = payload.new;
+            if ((newMsg.sender_id === clientId && newMsg.receiver_id === user.id) || (newMsg.sender_id === user.id && newMsg.receiver_id === clientId)) {
+                setMessages((prev) => [...prev, newMsg]);
+                supabase.rpc('mark_messages_as_read', { p_client_id: clientId });
+                scrollToBottom();
+            }
+        };
+
+        const handleStatusUpdate = (payload) => {
+            setConversationStatus(payload.new.status);
+        };
+
+        const messagesChannel = supabase.channel(`admin-chat-with-${clientId}`)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, handleNewMessage)
+            .subscribe();
+
+        const statusChannel = supabase.channel(`conversation-status-${clientId}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_conversations', filter: `client_id=eq.${clientId}` }, handleStatusUpdate)
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(messagesChannel);
+            supabase.removeChannel(statusChannel);
+        };
+    }, [clientId, user]);
+
+    // Lógica para filtrar los mensajes según el término de búsqueda
+    const filteredMessages = messages.filter(msg =>
+        msg.content.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }
 
-  if (!clientInfo) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground">Cliente no encontrado</p>
-      </div>
-    );
-  }
+    const handleSendMessage = async (e) => {
+        e.preventDefault();
+        if (newMessage.trim() === '' || isSending || !clientProfile) return;
+        setIsSending(true);
+        await sendAdminMessage(clientProfile.user_id, newMessage.trim());
+        setNewMessage('');
+        setIsSending(false);
+    };
 
-  return (
-    <div className="space-y-6 h-[calc(100vh-10rem)] flex flex-col">
-      <div className="flex items-center space-x-4 flex-shrink-0">
-        <Button variant="outline" size="icon" asChild>
-          <Link to="/admin/chat">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Chat con {clientInfo.full_name}</h1>
-          <p className="text-muted-foreground text-sm">{clientInfo.email}</p>
-        </div>
-      </div>
+    const handleStatusChange = async (newStatus) => {
+        if (!newStatus || newStatus === conversationStatus || !clientProfile) return;
+        setConversationStatus(newStatus);
+        await updateChatStatus(clientProfile.user_id, newStatus);
+    };
 
-      <Card className="bg-card border-border shadow-lg flex-grow flex flex-col">
-        <CardHeader className="border-b border-border flex-shrink-0">
-          <div className="flex items-center space-x-3">
-            <Avatar>
-              <AvatarImage src={null} alt={clientInfo.full_name} />
-              <AvatarFallback>{clientInfo.full_name?.split(' ').map(n => n[0]).join('') || 'C'}</AvatarFallback>
-            </Avatar>
-            <div>
-              <CardTitle>{clientInfo.full_name}</CardTitle>
-              <CardDescription className="text-green-500">En línea</CardDescription>
+    const copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text);
+        toast({ title: "Copiado", description: "ID copiado al portapapeles." });
+    };
+
+    if (loading) {
+        return <div className="flex items-center justify-center h-screen"><p className="text-muted-foreground">Cargando...</p></div>;
+    }
+
+    if (!clientProfile) {
+        return (
+            <div className="flex flex-col items-center justify-center h-screen text-center p-4">
+                 <h2 className="text-xl font-semibold text-destructive">Error al Cargar Cliente</h2>
+                 <p className="text-muted-foreground">No se pudo cargar el perfil del cliente.</p>
+                 <Button asChild className="mt-4">
+                     <Link to="/admin/chat">Volver a la lista</Link>
+                 </Button>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0 flex-grow flex flex-col">
-          <ScrollArea className="flex-grow p-4">
-            <div className="space-y-4">
-              {messages.map((msg) => (
-                <div key={msg.id} className={`flex ${msg.sender_id === user.id ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[70%] p-3 rounded-lg ${
-                    msg.sender_id === user.id 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'bg-secondary text-secondary-foreground'
-                  }`}>
-                    <p className="text-sm">{msg.content}</p>
-                    <p className={`text-xs mt-1 ${
-                      msg.sender_id === user.id 
-                        ? 'text-primary-foreground/70' 
-                        : 'text-muted-foreground'
-                    } text-right`}>
-                      {formatTimestamp(msg.created_at)}
-                    </p>
-                  </div>
+        );
+    }
+
+    return (
+        <div className="grid grid-rows-[auto,1fr] h-screen max-h-screen p-4 md:p-6 gap-4">
+            
+            <header className="flex items-center justify-between space-x-4">
+                <div className="flex items-center space-x-3">
+                    <Button variant="outline" size="icon" asChild>
+                        <Link to="/admin/chat"><ArrowLeft className="h-4 w-4" /></Link>
+                    </Button>
+                    <Avatar>
+                        <AvatarImage src={null} alt={clientProfile.full_name} />
+                        <AvatarFallback>{clientProfile.full_name?.charAt(0) || 'C'}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <h1 className="text-xl font-bold text-foreground">{clientProfile.full_name}</h1>
+                        <p className="text-muted-foreground text-sm">{clientProfile.email}</p>
+                        <div className="text-xs text-muted-foreground font-mono mt-1 space-y-1">
+                            <div className="flex items-center gap-2">
+                               <span>ID: {clientProfile.short_id}</span>
+                               <Copy className="h-3 w-3 cursor-pointer hover:text-foreground" onClick={() => copyToClipboard(clientProfile.short_id)} />
+                            </div>
+                        </div>
+                    </div>
                 </div>
-              ))}
-            </div>
-          </ScrollArea>
-          <div className="p-4 border-t border-border flex-shrink-0">
-            <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
-              <Input
-                placeholder="Escribe tu respuesta..."
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                className="flex-grow"
-              />
-              <Button type="submit" size="icon" disabled={!newMessage.trim()}>
-                <Send className="h-4 w-4" />
-              </Button>
-            </form>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+                <div className="flex items-center space-x-3">
+                    <Select value={conversationStatus} onValueChange={handleStatusChange}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Cambiar estado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="pendiente">Pendiente</SelectItem>
+                            <SelectItem value="en revisión">En Revisión</SelectItem>
+                            <SelectItem value="leído">Leído</SelectItem>
+                            <SelectItem value="solucionado">Solucionado</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </header>
+
+            {/* ✅ CAMBIO ESTRUCTURAL: La tarjeta ahora usa CSS Grid para definir sus filas. */}
+            <Card className="grid grid-rows-[auto,1fr,auto] overflow-hidden">
+                <CardHeader className="p-2 border-b">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Buscar en la conversación..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full bg-transparent pl-10"
+                        />
+                    </div>
+                </CardHeader>
+                
+                {/* ✅ Fila 2: El área de scroll ocupa todo el espacio disponible ('1fr') y maneja el scroll interno. */}
+                <ScrollArea ref={scrollAreaRef} className="p-4">
+                    <AnimatePresence>
+                        {filteredMessages.map((msg) => (
+                            <motion.div key={msg.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                                className={`flex my-2 ${msg.sender_id === clientProfile.user_id ? 'justify-start' : 'justify-end'}`}>
+                                <div className={`max-w-[75%] p-3 rounded-2xl ${msg.sender_id === clientProfile.user_id
+                                        ? 'bg-secondary text-secondary-foreground rounded-bl-lg'
+                                        : 'bg-primary text-primary-foreground rounded-br-lg'}`}>
+                                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
+                    {filteredMessages.length === 0 && searchTerm && (
+                        <div className="text-center text-muted-foreground py-10">No se encontraron mensajes.</div>
+                    )}
+                </ScrollArea>
+                
+                {/* ✅ Fila 3: El área de texto ocupa su altura natural ('auto') y siempre está visible. */}
+                <div className="p-4 border-t bg-background">
+                    <form onSubmit={handleSendMessage} className="flex items-center space-x-3">
+                        <Input 
+                            placeholder="Escribe tu respuesta..." 
+                            value={newMessage} 
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            className="flex-grow" 
+                            disabled={isSending} 
+                            autoComplete="off" 
+                        />
+                        <Button type="submit" size="icon" disabled={!newMessage.trim() || isSending}>
+                            <Send className="h-4 w-4" />
+                        </Button>
+                    </form>
+                </div>
+            </Card>
+        </div>
+    );
 };
 
 export default AdminChatInstancePage;

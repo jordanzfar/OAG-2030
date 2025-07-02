@@ -10,132 +10,123 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/components/ui/use-toast';
 import AdminNotificationsWidget from '@/components/admin/AdminNotificationsWidget';
+import { NotificationProvider, useNotifications } from '@/context/NotificationContext.jsx';
 
-const adminSidebarNavItems = [
-    { title: "Panel General", href: "/admin", icon: LayoutDashboard, roles: ['admin', 'support', 'validation', 'finance'] },
-    { title: "Solicitudes", href: "/admin/requests", icon: FileStack, roles: ['admin', 'support', 'validation'] },
-    { title: "Documentos", href: "/admin/documents", icon: FileCheck2, roles: ['admin', 'validation'] },
-    { title: "Chat", href: "/admin/chat", icon: MessageSquare, roles: ['admin', 'support'] },
-    { title: "Pagos", href: "/admin/payments", icon: Banknote, roles: ['admin', 'finance'] },
-    { title: "Finanzas", href: "/admin/finance", icon: DollarSign, roles: ['admin', 'finance'] },
-    { title: "Verificaciones", href: "/admin/verification", icon: Shield, roles: ['admin', 'validation'] },
-    { title: "Notificaciones", href: "/admin/notifications", icon: Bell, roles: ['admin', 'support', 'validation', 'finance'] },
-    { title: "Usuarios", href: "/admin/users", icon: Users, roles: ['admin'] },
-    { title: "Estadísticas", href: "/admin/stats", icon: BarChart2, roles: ['admin'] },
-    { title: "Configuración", href: "/admin/settings", icon: Settings, roles: ['admin'] },
-];
-
-const AdminLayout = () => {
+const SidebarNav = () => {
     const location = useLocation();
-    const navigate = useNavigate();
-    const { toast } = useToast();
-    
-    // --- INICIO DE LA CORRECCIÓN ---
+    const { userRole } = useAuth();
+    const { unreadMessageCount } = useNotifications();
 
-    // 1. Ya no necesitamos la función `logout` del `useAuth`
-    const { userRole } = useAuth(); 
-    
-    // 2. Solo necesitamos la función `signOut` de `useSupabaseAuth`.
-    // Ya no es necesario `user` o `userProfile` aquí, a menos que otro componente los use.
-    const { signOut, user, userProfile } = useSupabaseAuth(); 
-
-
-    // 3. Simplificamos la función `handleLogout`.
-    const handleLogout = async () => {
-        toast({
-            title: "Cerrando sesión...",
-        });
-
-        // Llamamos DIRECTAMENTE a la función `signOut` de tu hook de Supabase.
-        const { error } = await signOut();
-        
-        if (error) {
-            // Si ocurre un error, lo notificamos.
-            toast({
-                variant: "destructive",
-                title: "Error al cerrar sesión",
-                description: error.message,
-            });
-        } else {
-            // Si es exitoso, simplemente redirigimos. El AuthContext ya se limpiará solo.
-            navigate('/login', { replace: true });
-            toast({
-                title: "Sesión cerrada",
-                description: "Has cerrado sesión exitosamente.",
-            });
-        }
-    };
-    // --- FIN DE LA CORRECCIÓN ---
-
+    const adminSidebarNavItems = [
+        { title: "Panel General", href: "/admin", icon: LayoutDashboard, roles: ['admin', 'support', 'validation', 'finance'] },
+        { title: "Solicitudes", href: "/admin/requests", icon: FileStack, roles: ['admin', 'support', 'validation'] },
+        { title: "Documentos", href: "/admin/documents", icon: FileCheck2, roles: ['admin', 'validation'] },
+        { title: "Chat", href: "/admin/chat", icon: MessageSquare, roles: ['admin', 'support'], notificationCount: unreadMessageCount },
+        { title: "Pagos", href: "/admin/payments", icon: Banknote, roles: ['admin', 'finance'] },
+        { title: "Finanzas", href: "/admin/finance", icon: DollarSign, roles: ['admin', 'finance'] },
+        { title: "Verificaciones", href: "/admin/verification", icon: Shield, roles: ['admin', 'validation'] },
+        { title: "Notificaciones", href: "/admin/notifications", icon: Bell, roles: ['admin', 'support', 'validation', 'finance'] },
+        { title: "Usuarios", href: "/admin/users", icon: Users, roles: ['admin'] },
+        { title: "Estadísticas", href: "/admin/stats", icon: BarChart2, roles: ['admin'] },
+        { title: "Configuración", href: "/admin/settings", icon: Settings, roles: ['admin'] },
+    ];
 
     const accessibleNavItems = userRole ? adminSidebarNavItems.filter(item => item.roles.includes(userRole)) : [];
 
     return (
-        <div className="flex min-h-screen flex-col">
-            <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <div className="container flex h-16 items-center justify-between">
-                    <Link to="/admin" className="flex items-center space-x-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
-                            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                            <path d="M12 18l-3-3 3-3 3 3-3 3z"></path>
-                        </svg>
-                        <span className="font-bold text-foreground">Opulent Auto - Admin</span>
-                    </Link>
-
-                    <div className="flex items-center space-x-4">
-                        <AdminNotificationsWidget />
-                        <Avatar className="h-8 w-8">
-                            <AvatarImage src={userProfile?.avatar_url} alt={userProfile?.full_name || 'Admin'} />
-                            <AvatarFallback>
-                                {userRole ? userRole.charAt(0).toUpperCase() : 'A'}
-                            </AvatarFallback>
-                        </Avatar>
-                        <Button variant="ghost" size="icon" onClick={handleLogout}>
-                            <LogOut className="h-5 w-5 text-muted-foreground hover:text-foreground" />
-                        </Button>
+        <nav className="flex flex-col space-y-2 p-4">
+            {accessibleNavItems.map((item) => (
+                <Link
+                    key={item.href}
+                    to={item.href}
+                    className={cn(
+                        'flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
+                        location.pathname.startsWith(item.href) && (location.pathname === item.href || item.href !== '/admin')
+                            ? 'bg-accent text-accent-foreground'
+                            : 'text-muted-foreground'
+                    )}
+                >
+                    <div className="flex items-center">
+                        <item.icon className="mr-2 h-4 w-4" />
+                        {item.title}
                     </div>
-                </div>
-            </header>
+                    {item.notificationCount > 0 && (
+                        <span className="bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
+                            {item.notificationCount}
+                        </span>
+                    )}
+                </Link>
+            ))}
+        </nav>
+    );
+};
 
-            <div className="container flex-1 items-start md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10">
-                <aside className="fixed top-16 z-30 -ml-2 hidden h-[calc(100vh-4rem)] w-full shrink-0 md:sticky md:block">
-                    <ScrollArea className="h-full py-6 pr-6 lg:py-8">
-                        <nav className="flex flex-col space-y-2">
-                            {accessibleNavItems.map((item) => (
-                                <Link
-                                    key={item.href}
-                                    to={item.href}
-                                    className={cn(
-                                        'flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
-                                        location.pathname.startsWith(item.href) && (location.pathname === item.href || item.href !== '/admin')
-                                            ? 'bg-accent text-accent-foreground'
-                                            : 'text-muted-foreground',
-                                    )}
-                                >
-                                    <item.icon className="mr-2 h-4 w-4" />
-                                    {item.title}
-                                </Link>
-                            ))}
-                        </nav>
+const AdminLayout = () => {
+    const navigate = useNavigate();
+    const { toast } = useToast();
+    const { signOut, userProfile } = useSupabaseAuth(); 
+    
+    const handleLogout = async () => {
+        toast({ title: "Cerrando sesión..." });
+        const { error } = await signOut();
+        if (error) {
+            toast({ variant: "destructive", title: "Error al cerrar sesión", description: error.message });
+        } else {
+            navigate('/login', { replace: true });
+            toast({ title: "Sesión cerrada", description: "Has cerrado sesión exitosamente." });
+        }
+    };
+
+    return (
+        <NotificationProvider>
+            {/* ✅ Contenedor principal: ocupa toda la pantalla y es flex */}
+            <div className="flex h-screen max-h-screen bg-background">
+                {/* Sidebar: se oculta en móvil, visible en pantallas grandes */}
+                <aside className="hidden md:block w-64 flex-shrink-0 border-r">
+                    <ScrollArea className="h-full">
+                        <SidebarNav />
                     </ScrollArea>
                 </aside>
 
-                <main className="relative py-6 lg:py-8">
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={location.pathname}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <Outlet />
-                        </motion.div>
-                    </AnimatePresence>
-                </main>
+                {/* ✅ Contenedor del contenido principal: es una columna flex y ocupa el resto del espacio */}
+                <div className="flex-1 flex flex-col overflow-hidden">
+                    {/* Cabecera: ocupa su espacio y no se encoge */}
+                    <header className="flex-shrink-0 border-b">
+                        <div className="container flex h-16 items-center justify-between">
+                            <Link to="/admin" className="flex items-center space-x-2">
+                                <span className="font-bold text-foreground">Opulent Auto - Admin</span>
+                            </Link>
+                            <div className="flex items-center space-x-4">
+                                <AdminNotificationsWidget />
+                                <Avatar className="h-8 w-8">
+                                    <AvatarImage src={userProfile?.avatar_url} alt={userProfile?.full_name || 'Admin'} />
+                                    <AvatarFallback>{userProfile?.full_name?.charAt(0) || 'A'}</AvatarFallback>
+                                </Avatar>
+                                <Button variant="ghost" size="icon" onClick={handleLogout}>
+                                    <LogOut className="h-5 w-5 text-muted-foreground hover:text-foreground" />
+                                </Button>
+                            </div>
+                        </div>
+                    </header>
+                    
+                    {/* ✅ Área principal: Crece para ocupar el espacio y es 'relative' para que la página del chat se posicione dentro */}
+                    <main className="flex-1 relative overflow-y-auto">
+                        <AnimatePresence mode="wait">
+                            <motion.div 
+                                key={useLocation().pathname} 
+                                initial={{ opacity: 0 }} 
+                                animate={{ opacity: 1 }} 
+                                exit={{ opacity: 0 }} 
+                                transition={{ duration: 0.2 }}
+                                className="h-full" // Asegura que la animación ocupe toda la altura
+                            >
+                                <Outlet />
+                            </motion.div>
+                        </AnimatePresence>
+                    </main>
+                </div>
             </div>
-        </div>
+        </NotificationProvider>
     );
 };
 

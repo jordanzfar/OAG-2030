@@ -1,11 +1,15 @@
 import { useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase'; // Asegúrate que la ruta es correcta
+import { useSupabaseAuth } from './useSupabaseAuth'; // Necesitamos el usuario admin
 import { useAdminQueries } from '@/hooks/useAdminQueries';
 import { useAdminActions } from '@/hooks/useAdminActions';
+import { useToast } from '@/components/ui/use-toast'; // ✅ Importación añadida
 
 export const useAdminData = () => {
+    const { user } = useSupabaseAuth();
     const queries = useAdminQueries();
     const actions = useAdminActions();
+    const { toast } = useToast(); // ✅ Hook de notificaciones
 
     const fetchAllUsers = useCallback(async () => {
         const { data, error } = await supabase
@@ -54,21 +58,19 @@ export const useAdminData = () => {
             return { success: false, error };
         }
     }, []);
-    
+
     const fetchUsersByRole = useCallback(async (role) => {
         const { data, error } = await supabase.from('users_profile').select('id').eq('role', role);
         return { success: !error, data, error };
     }, []);
 
-    // --- INICIO DE LA CORRECCIÓN ---
-    // Añadimos la función que faltaba para crear notificaciones
     const createNotification = useCallback(async (notificationData) => {
         try {
             const { data, error } = await supabase
                 .from('notifications')
                 .insert(notificationData)
                 .select();
-            
+
             if (error) throw error;
             return { success: true, data };
         } catch (error) {
@@ -76,7 +78,58 @@ export const useAdminData = () => {
             return { success: false, error };
         }
     }, []);
-    // --- FIN DE LA CORRECCIÓN ---
+
+    const sendAdminMessage = useCallback(async (clientId, content) => {
+        if (!user || !clientId || !content) {
+            console.error("Faltan datos para enviar el mensaje: admin, cliente o contenido.");
+            return { success: false, error: new Error("Faltan datos para enviar el mensaje.") };
+        }
+
+        try {
+            const { data, error } = await supabase
+                .from('chat_messages')
+                .insert({
+                    sender_id: user.id,
+                    receiver_id: clientId,
+                    content: content,
+                    is_read: false,
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            return { success: true, data };
+        } catch (error) {
+            console.error("Error al enviar el mensaje de admin:", error);
+            return { success: false, error };
+        }
+    }, [user]);
+
+    // ✅ FUNCIÓN NUEVA PARA ACTUALIZAR ESTADO
+    const updateChatStatus = useCallback(async (clientId, newStatus) => {
+        try {
+            const { error } = await supabase.rpc('update_chat_status', {
+                p_client_id: clientId,
+                p_new_status: newStatus,
+            });
+
+            if (error) throw error;
+
+            toast({
+                title: "✅ Estado Actualizado",
+                description: `La conversación ahora es "${newStatus}".`,
+            });
+            return { success: true };
+        } catch (error) {
+            console.error('Error al actualizar estado del chat:', error);
+            toast({
+                variant: "destructive",
+                title: "❌ Error al Actualizar",
+                description: error.message,
+            });
+            return { success: false, error };
+        }
+    }, [toast]);
 
     const loading = queries.loading || actions.loading;
 
@@ -92,6 +145,8 @@ export const useAdminData = () => {
         updateUserVerification: actions.updateUserVerification,
         getDashboardStats,
         fetchUsersByRole,
-        createNotification, // <-- La exportamos para que otros componentes puedan usarla.
+        createNotification,
+        sendAdminMessage,
+        updateChatStatus, // ✅ Se exporta la nueva función
     };
 };
