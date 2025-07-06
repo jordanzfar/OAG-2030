@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -10,100 +9,67 @@ export const useSupabaseAuth = () => {
   const [userProfile, setUserProfile] = useState(null);
   const { toast } = useToast();
 
+  // ✅ CORRECCIÓN: Se usa useCallback para estabilizar la función y evitar re-renders innecesarios.
+  const loadUserProfile = useCallback(async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('users_profile')
+        .select('*')
+        .eq('user_id', userId)
+        .single(); // ✅ Se usa .single() para obtener un solo objeto o null, es más limpio.
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 = "The result contains 0 rows"
+        // Solo muestra error si no es porque el perfil aún no existe.
+        console.error('Error loading user profile:', error);
+        toast({
+          variant: "destructive",
+          title: "Error al cargar el perfil",
+          description: error.message,
+        });
+      }
+
+      setUserProfile(data);
+    } catch (error) {
+      console.error('Catch Error loading user profile:', error);
+    }
+  }, [toast]); // Dependencia de toast para que no se queje el linter.
+
   useEffect(() => {
-    // Get initial session
     const getInitialSession = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) {
-        console.error('Error getting session:', error);
-      } else {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await loadUserProfile(session.user.id);
-        }
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        await loadUserProfile(session.user.id);
       }
       setLoading(false);
     };
 
     getInitialSession();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
-        if (session?.user) {
+
+        if (event === 'SIGNED_IN' && session?.user) {
           await loadUserProfile(session.user.id);
-        } else {
+        } else if (event === 'SIGNED_OUT') {
           setUserProfile(null);
         }
-        
-        setLoading(false);
       }
     );
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [loadUserProfile]);
 
-  const createDefaultProfile = async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from('users_profile')
-        .insert([
-          {
-            user_id: userId,
-            full_name: '',
-            phone: '',
-            role: 'client',
-            verification_status: 'pending',
-            buying_power: 0
-          }
-        ])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating default profile:', error);
-        return null;
-      }
-
-      setUserProfile(data);
-      return data;
-    } catch (error) {
-      console.error('Error creating default profile:', error);
-      return null;
-    }
-  };
-
-  const loadUserProfile = async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from('users_profile')
-        .select('*')
-        .eq('user_id', userId);
-
-      if (error) {
-        console.error('Error loading user profile:', error);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        setUserProfile(data[0]);
-      } else {
-        // If no profile exists, create a default one
-        console.log('No profile found, creating default profile...');
-        await createDefaultProfile(userId);
-      }
-    } catch (error) {
-      console.error('Error loading user profile:', error);
-    }
-  };
+  // ❌ ELIMINADO: La función createDefaultProfile se borró por completo.
+  // El trigger de la base de datos se encarga de esto.
 
   const signUp = async (email, password, metadata = {}) => {
     setLoading(true);
     try {
+      // ✅ CORRECCIÓN: El signUp ahora solo se preocupa de registrar al usuario en `auth`.
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -118,17 +84,15 @@ export const useSupabaseAuth = () => {
           title: "Error de registro",
           description: error.message,
         });
-        return { success: false, error: error.message };
+        return { success: false, error };
       }
 
-      // Create user profile automatically
-      if (data.user) {
-        await createDefaultProfile(data.user.id);
-      }
+      // ❌ ELIMINADO: La llamada a `createDefaultProfile` fue removida.
+      // Esta era la línea que causaba el conflicto.
 
       toast({
         title: "Registro exitoso",
-        description: "Cuenta creada correctamente.",
+        description: "Por favor, revisa tu correo para verificar tu cuenta.",
       });
       
       return { success: true, data };
@@ -138,7 +102,7 @@ export const useSupabaseAuth = () => {
         title: "Error inesperado",
         description: error.message,
       });
-      return { success: false, error: error.message };
+      return { success: false, error };
     } finally {
       setLoading(false);
     }
@@ -158,7 +122,7 @@ export const useSupabaseAuth = () => {
           title: "Error de inicio de sesión",
           description: error.message,
         });
-        return { success: false, error: error.message };
+        return { success: false, error };
       }
 
       return { success: true, data };
@@ -168,7 +132,7 @@ export const useSupabaseAuth = () => {
         title: "Error inesperado",
         description: error.message,
       });
-      return { success: false, error: error.message };
+      return { success: false, error };
     } finally {
       setLoading(false);
     }
@@ -185,9 +149,11 @@ export const useSupabaseAuth = () => {
           title: "Error al cerrar sesión",
           description: error.message,
         });
-        return { success: false, error: error.message };
+        return { success: false, error };
       }
 
+      // ✅ CORRECCIÓN: Se limpian los estados locales explícitamente.
+      setUser(null);
       setUserProfile(null);
       return { success: true };
     } catch (error) {
@@ -196,7 +162,7 @@ export const useSupabaseAuth = () => {
         title: "Error inesperado",
         description: error.message,
       });
-      return { success: false, error: error.message };
+      return { success: false, error };
     } finally {
       setLoading(false);
     }
@@ -204,7 +170,7 @@ export const useSupabaseAuth = () => {
 
   const updateProfile = async (updates) => {
     if (!user) return { success: false, error: 'No user logged in' };
-
+    setLoading(true);
     try {
       const { data, error } = await supabase
         .from('users_profile')
@@ -213,14 +179,7 @@ export const useSupabaseAuth = () => {
         .select()
         .single();
 
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Error al actualizar perfil",
-          description: error.message,
-        });
-        return { success: false, error: error.message };
-      }
+      if (error) throw error;
 
       setUserProfile(data);
       toast({
@@ -232,10 +191,12 @@ export const useSupabaseAuth = () => {
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error inesperado",
+        title: "Error al actualizar perfil",
         description: error.message,
       });
-      return { success: false, error: error.message };
+      return { success: false, error };
+    } finally {
+      setLoading(false);
     }
   };
 
