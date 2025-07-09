@@ -1,73 +1,76 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, AlertTriangle, Info, Clock, Bell, Search, Filter, BookMarked as MarkAsUnread } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Info, Clock, Bell, Search, Filter, BookMarked as MarkAsUnread, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useSupabaseData } from '@/hooks/useSupabaseData';
 
 const NotificationsPage = () => {
-  const { toast } = useToast();
-  const { user } = useSupabaseAuth();
-  const { fetchRecords, updateRecord } = useSupabaseData();
-  const [notifications, setNotifications] = useState([]);
-  const [filteredNotifications, setFilteredNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+    const { toast } = useToast();
+    const { user } = useAuth();
+    const { fetchRecords, updateRecord } = useSupabaseData();
+    const [notifications, setNotifications] = useState([]);
+    const [filteredNotifications, setFilteredNotifications] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterType, setFilterType] = useState('all');
+    const [filterStatus, setFilterStatus] = useState('all');
 
-  useEffect(() => {
-    if (user) {
-      loadNotifications();
-    }
-  }, [user]);
+    // ====================================================================
+    // --- INICIO DE LA CORRECCIÓN ---
+    // ====================================================================
 
-  useEffect(() => {
-    filterNotifications();
-  }, [notifications, searchTerm, filterType, filterStatus]);
+    // 1. Estabilizamos la función de carga
+    const loadNotifications = useCallback(async () => {
+        if (!user) {
+            setNotifications([]);
+            return;
+        }
 
-  const loadNotifications = async () => {
-    if (!user) return;
+        const result = await fetchRecords('notifications', { user_id: user.id }, {
+            orderBy: { column: 'created_at', ascending: false }
+        });
 
-    const result = await fetchRecords('notifications', { user_id: user.id }, {
-      orderBy: { column: 'created_at', ascending: false }
-    });
+        if (result.success) {
+            setNotifications(result.data || []);
+        }
+    }, [user, fetchRecords]);
 
-    if (result.success) {
-      setNotifications(result.data || []);
-    }
-    setLoading(false);
-  };
+    // 2. Creamos un useEffect robusto para la carga inicial
+    useEffect(() => {
+        const runLoad = async () => {
+            if (!user) {
+                setLoading(false);
+                return;
+            }
+            setLoading(true);
+            await loadNotifications();
+            setLoading(false);
+        };
+        runLoad();
+    }, [user, loadNotifications]);
 
-  const filterNotifications = () => {
-    let filtered = [...notifications];
-
-    // Filtrar por término de búsqueda
-    if (searchTerm) {
-      filtered = filtered.filter(notification =>
-        notification.message.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Filtrar por tipo
-    if (filterType !== 'all') {
-      filtered = filtered.filter(notification => notification.type === filterType);
-    }
-
-    // Filtrar por estado de lectura
-    if (filterStatus === 'unread') {
-      filtered = filtered.filter(notification => !notification.is_read);
-    } else if (filterStatus === 'read') {
-      filtered = filtered.filter(notification => notification.is_read);
-    }
-
-    setFilteredNotifications(filtered);
-  };
+    // 3. Creamos un useEffect separado para los filtros, que reacciona a los cambios.
+    useEffect(() => {
+        let filtered = [...notifications];
+        if (searchTerm) {
+            filtered = filtered.filter(n => n.message.toLowerCase().includes(searchTerm.toLowerCase()));
+        }
+        if (filterType !== 'all') {
+            filtered = filtered.filter(n => n.type === filterType);
+        }
+        if (filterStatus === 'unread') {
+            filtered = filtered.filter(n => !n.is_read);
+        } else if (filterStatus === 'read') {
+            filtered = filtered.filter(n => n.is_read);
+        }
+        setFilteredNotifications(filtered);
+    }, [notifications, searchTerm, filterType, filterStatus]);
 
   const markAsRead = async (notificationId) => {
     const result = await updateRecord('notifications', notificationId, {

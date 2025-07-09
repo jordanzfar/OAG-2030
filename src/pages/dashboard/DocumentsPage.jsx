@@ -1,17 +1,17 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { Upload, File, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useSupabaseData } from '@/hooks/useSupabaseData';
 
 const DocumentsPage = () => {
   const { toast } = useToast();
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const { createDocument, fetchRecords, deleteRecord, uploadFile } = useSupabaseData();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,18 +23,38 @@ const DocumentsPage = () => {
     }
   }, [user]);
 
-  const loadDocuments = async () => {
-    if (!user) return;
+    const loadDocuments = useCallback(async () => {
+        if (!user) {
+            setDocuments([]); 
+            return;
+        }
 
-    const result = await fetchRecords('documents', { user_id: user.id }, {
-      orderBy: { column: 'created_at', ascending: false }
-    });
+        const result = await fetchRecords('documents', { user_id: user.id }, {
+            orderBy: { column: 'created_at', ascending: false }
+        });
 
-    if (result.success) {
-      setDocuments(result.data || []);
-    }
-    setLoading(false);
-  };
+        if (result.success) {
+            setDocuments(result.data || []);
+        }
+    }, [user, fetchRecords]);
+
+
+    useEffect(() => {
+        const runLoad = async () => {
+          
+            if (!user) {
+                setLoading(false);
+                setDocuments([]);
+                return;
+            }
+            
+            setLoading(true);
+            await loadDocuments();
+            setLoading(false); 
+        }
+
+        runLoad();
+    }, [user, loadDocuments]);
 
   const handleUpload = async (e) => {
     e.preventDefault();

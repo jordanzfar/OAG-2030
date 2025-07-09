@@ -1,41 +1,58 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useSupabaseData } from '@/hooks/useSupabaseData';
 import LegalizationForm from '@/components/legalization/LegalizationForm';
 import LegalizationHistory from '@/components/legalization/LegalizationHistory';
 import DocumentUploadModal from '@/components/legalization/DocumentUploadModal';
+import { Loader2 } from 'lucide-react';
 
 const LegalizationPage = () => {
-  const { toast } = useToast();
-  const { user } = useSupabaseAuth();
-  const { createLegalization, createDocument, uploadFile, fetchRecords } = useSupabaseData();
-  const [legalizations, setLegalizations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedLegalization, setSelectedLegalization] = useState(null);
-  const [showDocumentModal, setShowDocumentModal] = useState(false);
+    const { toast } = useToast();
+    const { user } = useAuth();
+    const { createLegalization, createDocument, uploadFile, fetchRecords } = useSupabaseData();
+    const [legalizations, setLegalizations] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [selectedLegalization, setSelectedLegalization] = useState(null);
+    const [showDocumentModal, setShowDocumentModal] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      loadLegalizations();
-    }
-  }, [user]);
+    // ====================================================================
+    // --- INICIO DE LA CORRECCIÓN ---
+    // ====================================================================
 
-  const loadLegalizations = async () => {
-    if (!user) return;
+    // 1. Estabilizamos la función de carga con useCallback
+    const loadLegalizations = useCallback(async () => {
+        if (!user) {
+            setLegalizations([]);
+            return;
+        }
 
-    const result = await fetchRecords('legalizations', { user_id: user.id }, {
-      orderBy: { column: 'created_at', ascending: false }
-    });
+        const result = await fetchRecords('legalizations', { user_id: user.id }, {
+            orderBy: { column: 'created_at', ascending: false }
+        });
 
-    if (result.success) {
-      setLegalizations(result.data || []);
-    }
-    setLoading(false);
-  };
+        if (result.success) {
+            setLegalizations(result.data || []);
+        }
+    }, [user, fetchRecords]);
+
+    // 2. Creamos un useEffect robusto que controla el estado de carga
+    useEffect(() => {
+        const runLoad = async () => {
+            if (!user) {
+                setLoading(false);
+                return;
+            }
+            
+            setLoading(true);
+            await loadLegalizations();
+            setLoading(false);
+        };
+        runLoad();
+    }, [user, loadLegalizations]);
+
 
   const handleSubmit = async (data, uploadedFiles) => {
     if (!user) return;

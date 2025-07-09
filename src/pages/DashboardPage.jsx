@@ -21,13 +21,21 @@ const DashboardPage = () => {
 
     useEffect(() => {
         const fetchDashboardData = async () => {
-            if (!user) return;
+            // ✅ CORRECCIÓN CLAVE:
+            // Si no hay usuario al momento de ejecutar, no estamos cargando nada.
+            // Debemos establecer `loading` a `false` y salir.
+            if (!user) {
+                setLoading(false);
+                return;
+            }
+
             setLoading(true);
             setError(null);
             try {
                 const { data, error: rpcError } = await supabase.rpc('get_client_dashboard_stats', {
                     p_user_id: user.id
                 });
+
                 if (rpcError) throw rpcError;
 
                 const clientStats = [
@@ -47,10 +55,6 @@ const DashboardPage = () => {
         fetchDashboardData();
     }, [user]);
 
-    if (userRole && userRole !== 'client') {
-        return <p className="text-destructive">Acceso no autorizado.</p>;
-    }
-
     if (loading) {
         return (
             <div className="flex justify-center items-center h-64">
@@ -58,6 +62,10 @@ const DashboardPage = () => {
                 <p className="ml-4 text-muted-foreground">Cargando tu panel...</p>
             </div>
         );
+    }
+    
+    if (userRole && userRole !== 'client') {
+        return <p className="text-destructive">Acceso no autorizado.</p>;
     }
     
     if (error) {
@@ -79,14 +87,12 @@ const DashboardPage = () => {
                 <p className="text-muted-foreground mt-1">Bienvenido a tu panel personal de Opulent Auto Gallery.</p>
             </div>
             
-            {/* Widget de Buying Power ocupando todo el ancho */}
             <div className="w-full"> 
                 <BuyingPowerWidget />
             </div>
 
-            {/* Contenedor para los widgets de estadísticas */}
             {stats && (
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"> {/* Ajustado a 4 columnas en pantallas grandes */}
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                     {stats.map((stat, index) => (
                         <motion.div
                             key={index}

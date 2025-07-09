@@ -1,60 +1,74 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { CreditCard, ExternalLink, DollarSign, AlertCircle, CheckCircle } from 'lucide-react';
+import { CreditCard, ExternalLink, DollarSign, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth'; // Usando el hook consistente
 import { useSupabaseData } from '@/hooks/useSupabaseData';
 
 const PowerBuyingPage = () => {
-  const { toast } = useToast();
-  const { user, userProfile } = useSupabaseAuth();
-  const { createPowerBuyingRequest, fetchRecords } = useSupabaseData();
-  const [powerAmount, setPowerAmount] = useState([6000]);
-  const [customAmount, setCustomAmount] = useState('');
-  const [isCustomAmount, setIsCustomAmount] = useState(false);
-  const [currentBuyingPower, setCurrentBuyingPower] = useState(0);
-  const [powerRequests, setPowerRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+    const { toast } = useToast();
+    const { user, userProfile } = useAuth();
+    const { createPowerBuyingRequest, fetchRecords } = useSupabaseData();
+    const [powerAmount, setPowerAmount] = useState([6000]);
+    const [customAmount, setCustomAmount] = useState('');
+    const [isCustomAmount, setIsCustomAmount] = useState(false);
+    const [currentBuyingPower, setCurrentBuyingPower] = useState(0);
+    const [powerRequests, setPowerRequests] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const minAmount = 6000; // Mínimo $6,000
-  const maxAmount = 100000; // Sin límite real, pero ponemos 100k para el slider
-  const powerPackages = [
-    { amount: 6000, popular: true, title: "Básico", description: "Ideal para empezar" },
-    { amount: 12000, popular: false, title: "Estándar", description: "Más opciones de compra" },
-    { amount: 25000, popular: false, title: "Premium", description: "Mayor flexibilidad" },
-    { amount: 50000, popular: false, title: "Profesional", description: "Para compradores serios" },
-  ];
+    const minAmount = 6000;
+    const maxAmount = 100000;
+    const powerPackages = [
+        { amount: 6000, popular: true, title: "Básico", description: "Ideal para empezar" },
+        { amount: 12000, popular: false, title: "Estándar", description: "Más opciones" },
+        { amount: 25000, popular: false, title: "Premium", description: "Mayor flexibilidad" },
+        { amount: 50000, popular: false, title: "Profesional", description: "Para compradores serios" },
+    ];
 
-  useEffect(() => {
-    if (user) {
-      loadPowerRequests();
-    }
-  }, [user]);
+    // ====================================================================
+    // --- INICIO DE LA CORRECCIÓN ---
+    // ====================================================================
 
-  useEffect(() => {
-    if (userProfile) {
-      setCurrentBuyingPower(userProfile.buying_power || 0);
-    }
-  }, [userProfile]);
+    // 1. Estabilizamos la función de carga con useCallback.
+    const loadPowerRequests = useCallback(async () => {
+        if (!user) {
+            setPowerRequests([]);
+            return;
+        }
+        const result = await fetchRecords('power_buying_requests', { user_id: user.id }, {
+            orderBy: { column: 'created_at', ascending: false }
+        });
+        if (result.success) {
+            setPowerRequests(result.data || []);
+        }
+    }, [user, fetchRecords]);
 
-  const loadPowerRequests = async () => {
-    if (!user) return;
+    // 2. Creamos un useEffect robusto que controla la carga.
+    useEffect(() => {
+        const runLoad = async () => {
+            if (!user) {
+                setLoading(false);
+                return;
+            }
+            setLoading(true);
+            await loadPowerRequests();
+            setLoading(false);
+        };
+        runLoad();
+    }, [user, loadPowerRequests]);
+    
+    // Este efecto para actualizar el `buying_power` está bien.
+    useEffect(() => {
+        if (userProfile) {
+            setCurrentBuyingPower(userProfile.buying_power || 0);
+        }
+    }, [userProfile]);
 
-    const result = await fetchRecords('power_buying_requests', { user_id: user.id }, {
-      orderBy: { column: 'created_at', ascending: false }
-    });
-
-    if (result.success) {
-      setPowerRequests(result.data || []);
-    }
-    setLoading(false);
-  };
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {

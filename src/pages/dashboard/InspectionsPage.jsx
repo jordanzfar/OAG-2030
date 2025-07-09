@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -19,6 +19,7 @@ import { MapPin, Calendar as CalendarIcon, AlertCircle, Info, Download } from 'l
 import { cn } from "@/lib/utils";
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useSupabaseData } from '@/hooks/useSupabaseData';
+import { useAuth } from '@/hooks/useAuth';
 
 // Constants & Mock Data
 const iaaLocations = [
@@ -61,7 +62,7 @@ const inspectionSchema = z.object({
 
 const InspectionsPage = () => {
   const { toast } = useToast();
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const { createInspection, fetchRecords } = useSupabaseData();
   const [locationType, setLocationType] = useState('');
   const [commentLength, setCommentLength] = useState(0);
@@ -83,25 +84,36 @@ const InspectionsPage = () => {
   useEffect(() => {
     setCommentLength(watchedComments?.length || 0);
   }, [watchedComments]);
+const loadInspections = useCallback(async () => {
+        if (!user) {
+            setInspections([]);
+            return;
+        }
 
-  useEffect(() => {
-    if (user) {
-      loadInspections();
-    }
-  }, [user]);
+        const result = await fetchRecords('inspections', { user_id: user.id }, {
+            orderBy: { column: 'created_at', ascending: false }
+        });
 
-  const loadInspections = async () => {
-    if (!user) return;
+        if (result.success) {
+            setInspections(result.data || []);
+        }
+    }, [user, fetchRecords]); // Dependencias estables.
 
-    const result = await fetchRecords('inspections', { user_id: user.id }, {
-      orderBy: { column: 'created_at', ascending: false }
-    });
-
-    if (result.success) {
-      setInspections(result.data || []);
-    }
-    setLoading(false);
-  };
+    // 2. Creamos un useEffect robusto que controla el estado de carga.
+    useEffect(() => {
+        const runLoad = async () => {
+            // Si no hay usuario, simplemente dejamos de cargar.
+            if (!user) {
+                setLoading(false);
+                return;
+            }
+            
+            setLoading(true);
+            await loadInspections();
+            setLoading(false); // Siempre desactivamos el loading al final
+        }
+        runLoad();
+    }, [user, loadInspections]);
 
   const handleFormSubmit = async (data) => {
     if (!user) return;

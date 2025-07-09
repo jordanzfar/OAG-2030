@@ -7,9 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-// --- INICIO DE LA CORRECCIÓN ---
 import { Info, AlertTriangle, CheckCircle, Clock, Search, Download } from 'lucide-react'; // 1. Se importa el icono Download
-// --- FIN DE LA CORRECCIÓN ---
 import { useToast } from '@/components/ui/use-toast';
 import { useVinCheck } from '@/hooks/useVinCheck';
 

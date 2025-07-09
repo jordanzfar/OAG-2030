@@ -15,6 +15,9 @@ import AdminLayout from '@/components/layouts/AdminLayout';
 // Páginas de Cliente
 import DashboardPage from '@/pages/DashboardPage';
 import InspectionsPage from '@/pages/dashboard/InspectionsPage';
+
+import TestPage from '@/pages/dashboard/TestPage'; 
+
 import VinCheckPage from '@/pages/dashboard/VinCheckPage';
 import LegalizationPage from '@/pages/dashboard/LegalizationPage';
 import PowerBuyingPage from '@/pages/dashboard/PowerBuyingPage';
@@ -161,6 +164,9 @@ function App() {
                             >
                                 <Route index element={<DashboardPage />} />
                                 <Route path="inspections" element={<InspectionsPage />} />
+
+                                <Route path="test" element={<TestPage />} /> 
+
                                 <Route path="vin-check" element={<VinCheckPage />} />
                                 <Route path="legalization" element={<LegalizationPage />} />
                                 <Route path="power-buying" element={<PowerBuyingPage />} />

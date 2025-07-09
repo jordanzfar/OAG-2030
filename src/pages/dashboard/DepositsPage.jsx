@@ -1,40 +1,53 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { Upload, CheckCircle, Clock, AlertCircle } from 'lucide-react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useSupabaseData } from '@/hooks/useSupabaseData';
 
 const DepositsPage = () => {
   const { toast } = useToast();
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
   const { createDeposit, fetchRecords, uploadFile } = useSupabaseData();
   const [deposits, setDeposits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      loadDeposits();
-    }
-  }, [user]);
+  const loadDeposits = useCallback(async () => {
+        if (!user) {
+            setDeposits([]);
+            return;
+        }
 
-  const loadDeposits = async () => {
-    if (!user) return;
+        const result = await fetchRecords('deposits', { user_id: user.id }, {
+            orderBy: { column: 'created_at', ascending: false }
+        });
 
-    const result = await fetchRecords('deposits', { user_id: user.id }, {
-      orderBy: { column: 'created_at', ascending: false }
-    });
+        if (result.success) {
+            setDeposits(result.data || []);
+        }
+    }, [user, fetchRecords]); // Dependencias estables.
 
-    if (result.success) {
-      setDeposits(result.data || []);
-    }
-    setLoading(false);
-  };
+    // 2. Creamos un useEffect robusto que controla el estado de carga.
+    useEffect(() => {
+        const runLoad = async () => {
+            // Si no hay usuario, simplemente dejamos de cargar.
+            if (!user) {
+                setLoading(false);
+                return;
+            }
+            
+            // Si hay usuario, activamos el loading, cargamos y luego desactivamos.
+            setLoading(true);
+            await loadDeposits();
+            setLoading(false);
+        }
+        runLoad();
+    }, [user, loadDeposits]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

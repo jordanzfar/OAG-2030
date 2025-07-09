@@ -7,14 +7,14 @@ import { Send, Phone, Video, MoreVertical, AlertTriangle } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 
 const SUPPORT_USER_ID = import.meta.env.VITE_SUPABASE_SUPPORT_USER_ID;
 
 const ChatPage = () => {
     const { toast } = useToast();
-    const { user } = useSupabaseAuth();
+    const { user } = useAuth();
 
     // Estados
     const [messages, setMessages] = useState([]);
@@ -31,62 +31,85 @@ const ChatPage = () => {
         }
     };
 
-    // Efecto para cargar datos y manejar suscripciones
-    useEffect(() => {
+    const loadInitialData = React.useCallback(async () => {
         if (!user || !SUPPORT_USER_ID) {
-            setLoading(false);
+            setMessages([]);
             return;
         }
+        try {
+            const { data: statusData } = await supabase
+                .from('chat_conversations')
+                .select('status')
+                .eq('client_id', user.id)
+                .single();
+            
+            const currentStatus = statusData?.status || 'abierta';
+            setConversationStatus(currentStatus);
 
-        const loadInitialData = async () => {
-            setLoading(true);
-            try {
-                const { data: statusData } = await supabase
-                    .from('chat_conversations')
-                    .select('status')
-                    .eq('client_id', user.id)
-                    .single();
-
-                const currentStatus = statusData?.status || 'abierta';
-                setConversationStatus(currentStatus);
-
-                if (currentStatus !== 'solucionado') {
-                    const { data: messagesData, error } = await supabase
-                        .from('chat_messages')
-                        .select('*')
-                        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${SUPPORT_USER_ID}),and(sender_id.eq.${SUPPORT_USER_ID},receiver_id.eq.${user.id})`)
-                        .order('created_at', { ascending: true });
-                    if (error) throw error;
-                    setMessages(messagesData || []);
-                } else {
-                    setMessages([]);
-                }
-            } catch (error) {
-                console.error("Error al cargar el chat:", error);
-            } finally {
-                setLoading(false);
-                scrollToBottom();
+            if (currentStatus !== 'solucionado') {
+                const { data: messagesData, error } = await supabase
+                    .from('chat_messages')
+                    .select('*')
+                    .or(`and(sender_id.eq.${user.id},receiver_id.eq.${SUPPORT_USER_ID}),and(sender_id.eq.${SUPPORT_USER_ID},receiver_id.eq.${user.id})`)
+                    .order('created_at', { ascending: true });
+                if (error) throw error;
+                setMessages(messagesData || []);
+            } else {
+                setMessages([]);
             }
-        };
-        
-        loadInitialData();
+        } catch (error) {
+            console.error("Error al cargar el chat:", error);
+            toast({ title: "Error al cargar el chat", variant: "destructive" });
+        }
+    }, [user, toast]);
 
-        const messagesChannel = supabase.channel(`client-chat-${user.id}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `receiver_id=eq.${user.id}` }, (payload) => { setMessages((prev) => [...prev, payload.new]); scrollToBottom(); }).subscribe();
-        const statusChannel = supabase.channel(`client-status-${user.id}`).on('postgres_changes', { event: '*', schema: 'public', table: 'chat_conversations', filter: `client_id=eq.${user.id}` }, (payload) => {
+    // 2. useEffect para CARGAR DATOS (maneja el estado `loading`)
+    useEffect(() => {
+        const runLoad = async () => {
+            if (!user) {
+                setLoading(false);
+                return;
+            }
+            setLoading(true);
+            await loadInitialData();
+            setLoading(false);
+            scrollToBottom();
+        };
+        runLoad();
+    }, [user, loadInitialData]);
+
+    // 3. useEffect para SUSCRIPCIONES EN TIEMPO REAL (no toca el estado `loading`)
+    useEffect(() => {
+        if (!user) return;
+
+        const handleNewMessage = (payload) => {
+            setMessages((prev) => [...prev, payload.new]);
+            scrollToBottom();
+        };
+
+        const handleStatusChange = (payload) => {
             const newStatus = payload.new.status;
             setConversationStatus(newStatus);
             if (newStatus === 'solucionado') {
                 setMessages([]);
                 toast({ title: "Conversación finalizada", description: "Un administrador ha marcado esta conversación como solucionada." });
             }
-        }).subscribe();
+        };
+
+        const messagesChannel = supabase.channel(`client-chat-${user.id}`)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `receiver_id=eq.${user.id}` }, handleNewMessage)
+            .subscribe();
+            
+        const statusChannel = supabase.channel(`client-status-${user.id}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_conversations', filter: `client_id=eq.${user.id}` }, handleStatusChange)
+            .subscribe();
 
         return () => {
             supabase.removeChannel(messagesChannel);
             supabase.removeChannel(statusChannel);
         };
     }, [user, toast]);
-    
+
     const handleSendMessage = async (e) => {
         e.preventDefault();
         if (newMessage.trim() === '' || !user || isSending) return;
