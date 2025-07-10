@@ -1,15 +1,14 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'; // 1. Importa useMemo
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from "@/components/ui/use-toast"; // Se importa para notificaciones
 
 export const useSupabaseAuth = () => {
+    const [loading, setLoading] = useState(true);
     const [user, setUser] = useState(null);
     const [session, setSession] = useState(null);
-    const [loading, setLoading] = useState(true);
     const [userProfile, setUserProfile] = useState(null);
-    const { toast } = useToast();
+    const { toast } = useToast(); // Se inicializa el hook de notificaciones
 
-    // Función para cargar el perfil del usuario, memoizada con useCallback.
     const loadUserProfile = useCallback(async (userId) => {
         if (!userId) {
             setUserProfile(null);
@@ -22,118 +21,78 @@ export const useSupabaseAuth = () => {
                 .eq('user_id', userId)
                 .single();
 
-            // Ignora el error cuando el perfil simplemente no existe todavía.
-            if (error && error.code !== 'PGRST116') {
-                throw error;
-            }
+            if (error && error.code !== 'PGRST116') throw error;
             setUserProfile(data);
         } catch (error) {
-            console.error('Error crítico al cargar el perfil de usuario:', error);
-            setUserProfile(null); // Asegura que el perfil esté nulo si hay un error.
+            console.error('[loadUserProfile] ERROR:', error);
+            setUserProfile(null);
         }
     }, []);
 
-    // Efecto principal que maneja el ciclo de vida de la autenticación.
     useEffect(() => {
-        let isMounted = true;
-
         const initializeSession = async () => {
-            try {
-                // 1. Obtiene la sesión inicial al cargar la app.
-                const { data: { session: initialSession } } = await supabase.auth.getSession();
-                
-                if (isMounted) {
-                    const currentUser = initialSession?.user ?? null;
-                    setSession(initialSession);
-                    setUser(currentUser);
-                    if (currentUser) {
-                        await loadUserProfile(currentUser.id);
-                    }
-                }
-            } catch (e) {
-                console.error("Error al inicializar la sesión:", e);
-            } finally {
-                // 2. CRÍTICO: Asegura que el estado de carga siempre se desactive.
-                if (isMounted) {
-                    setLoading(false);
-                }
+            const { data: { session } } = await supabase.auth.getSession();
+            setSession(session);
+            const currentUser = session?.user;
+            setUser(currentUser);
+            
+            if (currentUser) {
+                await loadUserProfile(currentUser.id);
             }
+            setLoading(false);
         };
 
         initializeSession();
 
-        // 3. Escucha todos los cambios en el estado de autenticación.
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (_event, newSession) => {
-                if (!isMounted) return;
-
-                const currentUser = newSession?.user ?? null;
+            async (event, newSession) => {
                 setSession(newSession);
+                const currentUser = newSession?.user ?? null;
                 setUser(currentUser);
-                
-                // Si el usuario se desloguea, limpia el perfil. Si no, lo carga.
-                if (currentUser) {
+
+                if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
                     await loadUserProfile(currentUser.id);
-                } else {
+                } else if (event === 'SIGNED_OUT') {
                     setUserProfile(null);
                 }
-                
-                // Un cambio de estado de auth significa que la carga ha terminado.
-                setLoading(false);
             }
         );
 
-        // 4. Limpia la suscripción cuando el componente se desmonta.
         return () => {
-            isMounted = false;
             subscription?.unsubscribe();
         };
     }, [loadUserProfile]);
 
-    
-    // --- FUNCIONES DE AUTENTICACIÓN Y PERFIL ---
-    // Estas funciones inician una acción; el `useEffect` de arriba reaccionará a los cambios.
+    // 🔥 --- LÓGICA RESTAURADA --- 🔥
+    // Se completa el contenido de las funciones de autenticación.
 
-    const signUp = async (email, password, metadata = {}) => {
-        const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: { data: metadata }
-        });
-        if (error) {
-            toast({ variant: "destructive", title: "Error de registro", description: error.message });
-            return { success: false, error };
-        }
-        toast({ title: "Registro exitoso", description: "Por favor, revisa tu correo para verificar tu cuenta." });
-        return { success: true, data };
-    };
+    const signUp = useCallback(async (email, password, metadata = {}) => {
+        const { data, error } = await supabase.auth.signUp({ email, password, options: { data: metadata } });
+        if (error) toast({ variant: "destructive", title: "Error de registro", description: error.message });
+        else toast({ title: "Registro exitoso", description: "Por favor, revisa tu correo para confirmar." });
+        return { success: !error, data, error };
+    }, [toast]);
 
-    const signIn = async (email, password) => {
+    const signIn = useCallback(async (email, password) => {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-            toast({ variant: "destructive", title: "Error de inicio de sesión", description: error.message });
-            return { success: false, error };
-        }
-        return { success: true, data };
-    };
+        if (error) toast({ variant: "destructive", title: "Error de inicio de sesión", description: error.message });
+        return { success: !error, data, error };
+    }, [toast]);
 
-    const signOut = async () => {
+    const signOut = useCallback(async () => {
         const { error } = await supabase.auth.signOut();
-        if (error) {
-            toast({ variant: "destructive", title: "Error al cerrar sesión", description: error.message });
-            return { success: false, error };
-        }
-        // El estado se limpiará automáticamente por el listener onAuthStateChange.
-        return { success: true };
-    };
-
-     const updateProfile = useCallback(async (updates) => {
+        if (error) toast({ variant: "destructive", title: "Error al cerrar sesión", description: error.message });
+        else toast({ title: "Has cerrado sesión" });
+        return { success: !error };
+    }, [toast]);
+    
+    const updateProfile = useCallback(async (updates) => {
         if (!user) return { success: false, error: 'No user logged in' };
         try {
             const { data, error } = await supabase.from('users_profile').update(updates).eq('user_id', user.id).select().single();
             if (error) throw error;
-            setUserProfile(data);
-            toast({ title: "Perfil actualizado" });
+            setUserProfile(data); // Actualiza el perfil localmente
+            toast({ title: "Perfil actualizado correctamente" });
             return { success: true, data };
         } catch (error) {
             toast({ variant: "destructive", title: "Error al actualizar perfil", description: error.message });
@@ -141,8 +100,7 @@ export const useSupabaseAuth = () => {
         }
     }, [user, toast]);
 
-    // ✅ CORRECCIÓN 2 (LA MÁS IMPORTANTE): Estabilizamos el objeto de retorno.
-    // Este objeto solo se volverá a crear si alguna de sus dependencias cambia.
+    // El valor del contexto que se pasa a toda la aplicación.
     return useMemo(() => ({
         user,
         session,
