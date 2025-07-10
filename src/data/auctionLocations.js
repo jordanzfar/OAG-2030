@@ -1,4 +1,6 @@
 // Raw data from your request
+const createId = (state, name) => `${state}-${name.replace(/\s+/g, '-').toLowerCase()}`;
+
 const rawIaaData = `
 TX - Abilene - 7700 U.S. Hwy. 277 S., Abilene, TX 79601
 CA - ACE - Carson - 16920 S. Figueroa St., Gardena, CA 90248
@@ -395,7 +397,7 @@ WY - Copart Casper - 1998 OIL FIELD CENTER RD, 82604
 /**
  * Parses a raw string of location data into an array of objects.
  * @param {string} rawData The raw string data.
- * @returns {Array<{state: string, name: string, address: string, full: string}>}
+ * @returns {Array<{id: string, state: string, name: string, address: string, full: string}>}
  */
 const parseLocations = (rawData) => {
   return rawData
@@ -408,10 +410,11 @@ const parseLocations = (rawData) => {
       const name = parts[1].trim();
       const address = parts.slice(2).join(' - ').trim();
       return {
+        id: createId(state, name), // ID Único añadido
         state,
         name,
         address,
-        full: `${name} - ${address}`, // The value for the dropdown
+        full: `${name} - ${address}`,
       };
     })
     .filter(Boolean); // Remove any null entries
