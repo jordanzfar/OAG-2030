@@ -1,13 +1,14 @@
+/* ARCHIVO: src/hooks/useSupabaseAuth.js (Versión Final y Robusta) */
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useToast } from "@/components/ui/use-toast"; // Se importa para notificaciones
+import { useToast } from "@/components/ui/use-toast";
 
 export const useSupabaseAuth = () => {
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState(null);
     const [session, setSession] = useState(null);
     const [userProfile, setUserProfile] = useState(null);
-    const { toast } = useToast(); // Se inicializa el hook de notificaciones
+    const { toast } = useToast();
 
     const loadUserProfile = useCallback(async (userId) => {
         if (!userId) {
@@ -30,6 +31,7 @@ export const useSupabaseAuth = () => {
     }, []);
 
     useEffect(() => {
+        // 1. CARGA INICIAL: Se ejecuta solo una vez al montar el componente.
         const initializeSession = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             setSession(session);
@@ -39,19 +41,25 @@ export const useSupabaseAuth = () => {
             if (currentUser) {
                 await loadUserProfile(currentUser.id);
             }
+            
+            // Se desactiva el loader global y no se vuelve a activar.
             setLoading(false);
         };
 
         initializeSession();
 
+        // 2. LISTENER DE EVENTOS: Reacciona a cambios futuros.
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event, newSession) => {
+            (event, newSession) => {
+                // Actualiza la sesión y el usuario silenciosamente para TODOS los eventos.
                 setSession(newSession);
                 const currentUser = newSession?.user ?? null;
                 setUser(currentUser);
-
+                
+                // Pero SÓLO recarga el perfil para eventos importantes.
+                // Ignora TOKEN_REFRESHED para no mostrar loaders innecesarios.
                 if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-                    await loadUserProfile(currentUser.id);
+                    loadUserProfile(currentUser.id);
                 } else if (event === 'SIGNED_OUT') {
                     setUserProfile(null);
                 }
@@ -61,11 +69,9 @@ export const useSupabaseAuth = () => {
         return () => {
             subscription?.unsubscribe();
         };
-    }, [loadUserProfile]);
+    }, [loadUserProfile]); // El efecto se ejecuta solo una vez.
 
-    // 🔥 --- LÓGICA RESTAURADA --- 🔥
-    // Se completa el contenido de las funciones de autenticación.
-
+    // El resto del hook no necesita cambios
     const signUp = useCallback(async (email, password, metadata = {}) => {
         const { data, error } = await supabase.auth.signUp({ email, password, options: { data: metadata } });
         if (error) toast({ variant: "destructive", title: "Error de registro", description: error.message });
@@ -91,7 +97,7 @@ export const useSupabaseAuth = () => {
         try {
             const { data, error } = await supabase.from('users_profile').update(updates).eq('user_id', user.id).select().single();
             if (error) throw error;
-            setUserProfile(data); // Actualiza el perfil localmente
+            setUserProfile(data);
             toast({ title: "Perfil actualizado correctamente" });
             return { success: true, data };
         } catch (error) {
@@ -100,7 +106,6 @@ export const useSupabaseAuth = () => {
         }
     }, [user, toast]);
 
-    // El valor del contexto que se pasa a toda la aplicación.
     return useMemo(() => ({
         user,
         session,
