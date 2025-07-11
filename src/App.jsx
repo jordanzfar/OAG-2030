@@ -1,10 +1,8 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 
-// 🔥 --- SECCIÓN DE IMPORTACIONES CORREGIDA --- 🔥
-// Se apunta a las nuevas rutas de los providers y hooks.
 import AuthProvider from '@/providers/AuthProvider';
-import NotificationProvider from '@/providers/NotificationProvider'; // Se añade la importación que faltaba
+import NotificationProvider from '@/providers/NotificationProvider';
 import { useAuth } from '@/hooks/useAuth';
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from '@/components/ui/toaster';
@@ -13,7 +11,7 @@ import { Toaster } from '@/components/ui/toaster';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import AdminLayout from '@/components/layouts/AdminLayout';
 
-// (El resto de tus importaciones de páginas no cambia)
+// Páginas
 import LoginPage from '@/pages/LoginPage';
 import RegistrationPage from '@/pages/RegistrationPage';
 import NotFoundPage from '@/pages/NotFoundPage';
@@ -29,6 +27,8 @@ import DocumentsPage from '@/pages/dashboard/DocumentsPage';
 import ChatPage from '@/pages/dashboard/ChatPage';
 import NotificationsPage from '@/pages/dashboard/NotificationsPage';
 import AuctionPage from '@/pages/dashboard/AuctionPage';
+
+// Páginas de Admin
 import AdminDashboardPage from '@/pages/admin/AdminDashboardPage';
 import AdminRequestsPage from '@/pages/admin/AdminRequestsPage';
 import AdminDocumentsPage from '@/pages/admin/AdminDocumentsPage';
@@ -42,15 +42,14 @@ import AdminFinancePage from '@/pages/admin/AdminFinancePage';
 import AdminVerificationPage from '@/pages/admin/AdminVerificationPage';
 import AdminNotificationsPage from '@/pages/admin/AdminNotificationsPage';
 import AdminInspectionsPage from './pages/admin/inspections/AdminInspectionsPage';
+// ✅ INICIO DE CAMBIOS
+import AdminVinRequestsPage from './pages/admin/AdminVinRequestsPage';
+// ✅ FIN DE CAMBIOS
 
-
-
-// --- Componente para Proteger Rutas (Sin cambios) ---
+// --- Componente para Proteger Rutas ---
 const ProtectedRoute = ({ children, allowedRoles }) => {
-    const { isAuthenticated, userRole, loading } = useAuth(); // Se añade 'loading' para más robustez
+    const { isAuthenticated, userRole, loading } = useAuth();
 
-    // Mientras el contexto principal está cargando, mostramos un loader.
-    // Esto evita parpadeos si se accede a una ruta protegida directamente.
     if (loading) {
         return <div className="flex justify-center items-center h-screen"><p>Verificando...</p></div>;
     }
@@ -59,7 +58,6 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
         return <Navigate to="/login" replace />;
     }
     
-    // Si está autenticado, pero el rol aún no se carga (poco probable con la nueva arq.)
     if (!userRole) {
         return <div className="flex justify-center items-center h-screen"><p>Cargando perfil...</p></div>;
     }
@@ -71,7 +69,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return children;
 };
 
-// --- Componente de Página de Inicio (Sin cambios) ---
+// --- Componente de Página de Inicio ---
 const HomePage = () => {
     const { isAuthenticated, userRole, loading } = useAuth();
     
@@ -91,8 +89,6 @@ const HomePage = () => {
     return <Navigate to={redirectTo} replace />;
 };
 
-
-// --- Componente Principal de la Aplicación (Sin cambios en la estructura) ---
 function App() {
     useEffect(() => {
         const root = window.document.documentElement;
@@ -106,10 +102,11 @@ function App() {
                     <TooltipProvider>
                         <div className="min-h-screen bg-background font-sans antialiased">
                             <Routes>
-                                {/* ... Tu estructura de rutas no necesita cambios ... */}
                                 <Route path="/login" element={<LoginPage />} />
                                 <Route path="/register" element={<RegistrationPage />} />
                                 <Route path="/" element={<HomePage />} />
+
+                                {/* Rutas de Cliente */}
                                 <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['client']}><DashboardLayout /></ProtectedRoute>}>
                                     <Route index element={<DashboardPage />} />
                                     <Route path="inspections" element={<InspectionsPage />} />
@@ -124,10 +121,15 @@ function App() {
                                     <Route path="notifications" element={<NotificationsPage />} />
                                     <Route path="auction" element={<AuctionPage />} />
                                 </Route>
+
+                                {/* Rutas de Admin */}
                                 <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin', 'support', 'validation', 'finance']}><AdminLayout /></ProtectedRoute>}>
                                     <Route index element={<AdminDashboardPage />} />
                                     <Route path="inspections" element={<AdminInspectionsPage />} />
                                     <Route path="requests" element={<AdminRequestsPage />} />
+                                    {/* ✅ INICIO DE CAMBIOS */}
+                                    <Route path="vin-requests" element={<AdminVinRequestsPage />} />
+                                    {/* ✅ FIN DE CAMBIOS */}
                                     <Route path="documents" element={<AdminDocumentsPage />} />
                                     <Route path="chat" element={<AdminChatListPage />} />
                                     <Route path="chat/:clientId" element={<AdminChatInstancePage />} />
@@ -139,6 +141,7 @@ function App() {
                                     <Route path="verification" element={<AdminVerificationPage />} />
                                     <Route path="notifications" element={<AdminNotificationsPage />} />
                                 </Route>
+                                
                                 <Route path="*" element={<NotFoundPage />} />
                             </Routes>
                             <Toaster />

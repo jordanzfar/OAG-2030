@@ -10,7 +10,7 @@ import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/components/ui/use-toast';
 import AdminNotificationsWidget from '@/components/admin/AdminNotificationsWidget';
 import { NotificationProvider, useNotifications } from '@/context/NotificationContext.jsx';
-import {  LogOut, LayoutDashboard, FileStack,  FileCheck2, MessageSquare, Banknote, Users, BarChart2, Settings, Bell, DollarSign, Shield, ClipboardCheck } from 'lucide-react';
+import { LogOut, LayoutDashboard, FileStack, FileCheck2, MessageSquare, Banknote, Users, BarChart2, Settings, Bell, DollarSign, Shield, ClipboardCheck, SearchCheck } from 'lucide-react';
 
 const SidebarNav = () => {
     const location = useLocation();
@@ -19,8 +19,9 @@ const SidebarNav = () => {
 
     const adminSidebarNavItems = [
         { title: "Panel General", href: "/admin", icon: LayoutDashboard, roles: ['admin', 'support', 'validation', 'finance'] },
-        { title: "Solicitudes", href: "/admin/requests", icon: FileStack, roles: ['admin', 'support', 'validation'] },
+       // { title: "Solicitudes", href: "/admin/requests", icon: FileStack, roles: ['admin', 'support', 'validation'] },
         { title: "Inspecciones", href: "/admin/inspections", icon: ClipboardCheck, roles: ['admin', 'support', 'validation'] },
+        { title: "VIN Checks", href: "/admin/vin-requests", icon: SearchCheck, roles: ['admin', 'support'] },
         { title: "Documentos", href: "/admin/documents", icon: FileCheck2, roles: ['admin', 'validation'] },
         { title: "Chat", href: "/admin/chat", icon: MessageSquare, roles: ['admin', 'support'], notificationCount: unreadMessageCount },
         { title: "Pagos", href: "/admin/payments", icon: Banknote, roles: ['admin', 'finance'] },
@@ -28,7 +29,7 @@ const SidebarNav = () => {
         { title: "Verificaciones", href: "/admin/verification", icon: Shield, roles: ['admin', 'validation'] },
         { title: "Notificaciones", href: "/admin/notifications", icon: Bell, roles: ['admin', 'support', 'validation', 'finance'] },
         { title: "Usuarios", href: "/admin/users", icon: Users, roles: ['admin'] },
-        { title: "Estadísticas", href: "/admin/stats", icon: BarChart2, roles: ['admin'] },
+       // { title: "Estadísticas", href: "/admin/stats", icon: BarChart2, roles: ['admin'] },
         { title: "Configuración", href: "/admin/settings", icon: Settings, roles: ['admin'] },
     ];
 
@@ -80,18 +81,13 @@ const AdminLayout = () => {
 
     return (
         <NotificationProvider>
-            {/* ✅ Contenedor principal: ocupa toda la pantalla y es flex */}
             <div className="flex h-screen max-h-screen bg-background">
-                {/* Sidebar: se oculta en móvil, visible en pantallas grandes */}
                 <aside className="hidden md:block w-64 flex-shrink-0 border-r">
                     <ScrollArea className="h-full">
                         <SidebarNav />
                     </ScrollArea>
                 </aside>
-
-                {/* ✅ Contenedor del contenido principal: es una columna flex y ocupa el resto del espacio */}
                 <div className="flex-1 flex flex-col overflow-hidden">
-                    {/* Cabecera: ocupa su espacio y no se encoge */}
                     <header className="flex-shrink-0 border-b">
                         <div className="container flex h-16 items-center justify-between">
                             <Link to="/admin" className="flex items-center space-x-2">
@@ -110,16 +106,17 @@ const AdminLayout = () => {
                         </div>
                     </header>
                     
-                    {/* ✅ Área principal: Crece para ocupar el espacio y es 'relative' para que la página del chat se posicione dentro */}
-                    <main className="flex-1 relative overflow-y-auto">
+                    {/* ✅ INICIO DE CAMBIOS: Se añade la clase de padding "p-6" */}
+                    <main className="flex-1 relative overflow-y-auto p-6">
+                    {/* ✅ FIN DE CAMBIOS */}
                         <AnimatePresence mode="wait">
                             <motion.div 
                                 key={useLocation().pathname} 
-                                initial={{ opacity: 0 }} 
-                                animate={{ opacity: 1 }} 
-                                exit={{ opacity: 0 }} 
+                                initial={{ opacity: 0, y: 10 }} 
+                                animate={{ opacity: 1, y: 0 }} 
+                                exit={{ opacity: 0, y: -10 }} 
                                 transition={{ duration: 0.2 }}
-                                className="h-full" // Asegura que la animación ocupe toda la altura
+                                className="h-full"
                             >
                                 <Outlet />
                             </motion.div>
