@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+// ✅ INICIO DE CAMBIOS: Se añade 'useEffect' a la importación
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+// ✅ FIN DE CAMBIOS
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,9 +16,14 @@ import { Label } from '@/components/ui/label';
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Info, AlertTriangle, CheckCircle, Clock, Download, Search, Loader2, Check, X } from 'lucide-react';
+import { Info, AlertTriangle, CheckCircle, Clock, Download, Search, Loader2, Check, X, ArrowLeft, ArrowRight } from 'lucide-react';
 
-// --- Sub-componente del Formulario (Sin cambios) ---
+// ... (El resto del archivo no necesita cambios)
+// ... (VinCheckForm, HistoryItem, VinHistoryList, VinCheckPage)
+
+// (Pega este código completo en tu archivo para asegurar que todo esté correcto)
+
+// --- Sub-componente del Formulario ---
 const vinSchema = z.object({
   vin: z.string().length(17, "El VIN debe tener 17 caracteres.").regex(/^[a-zA-Z0-9]+$/, "Solo caracteres alfanuméricos."),
 });
@@ -47,9 +54,7 @@ const VinCheckForm = ({ onSubmitVin, decoding, decodedData, decodeVinWithFunctio
 
   const vehicleInfo = useMemo(() => {
     if (!decodedData || decodedData.length === 0) return null;
-
     const findValue = (variableName) => decodedData.find(item => item.Variable === variableName)?.Value || null;
-
     const info = {
       make: findValue('Make'),
       model: findValue('Model'),
@@ -63,7 +68,6 @@ const VinCheckForm = ({ onSubmitVin, decoding, decodedData, decodeVinWithFunctio
       doors: findValue('Doors'),
       fuelType: findValue('Fuel Type - Primary'),
     };
-
     if (info.make && info.model && info.year) return info;
     return null;
   }, [decodedData]);
@@ -133,63 +137,57 @@ const VinCheckForm = ({ onSubmitVin, decoding, decodedData, decodeVinWithFunctio
 };
 
 
-// --- Sub-componente de la Lista del Historial ---
 const statusConfig = {
     completed: { text: 'Completado', icon: <CheckCircle className="h-5 w-5 text-green-500" />, variant: 'success' },
     processing: { text: 'Procesando', icon: <Clock className="h-5 w-5 text-blue-500" />, variant: 'default' },
     pending: { text: 'Pendiente', icon: <AlertTriangle className="h-5 w-5 text-yellow-500" />, variant: 'secondary' },
 };
 
-// ✅ INICIO DE CAMBIOS: Componente HistoryItem con el nuevo layout vertical
 const HistoryItem = ({ check }) => {
     const config = statusConfig[check.status] || statusConfig.pending;
     return (
         <div className="p-4 border rounded-lg bg-background hover:bg-muted/50 transition-colors flex flex-col space-y-3">
-            {/* 1. VIN en su propia línea arriba */}
-            <h4 className="w-full font-semibold font-mono text-base text-foreground break-all">
-                {check.vin}
-            </h4>
-
-            {/* 2. Fecha y hora en la siguiente línea */}
-            <p className="text-sm text-muted-foreground">
-                {new Date(check.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}{' '}
-                {new Date(check.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-            </p>
-
-            {/* 3. Badge de estado y su ícono en la misma línea */}
+            <h4 className="w-full font-semibold font-mono text-base text-foreground break-all">{check.vin}</h4>
+            <p className="text-sm text-muted-foreground">{new Date(check.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })} {' '} {new Date(check.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
             <div className="flex items-center gap-2">
                 <Badge variant={config.variant}>{config.text}</Badge>
                 {config.icon}
             </div>
-
-            {/* 4. Botón de descarga (si aplica) */}
             {check.status === 'completed' && check.pdf_url && (
                 <div className="pt-3 mt-3 border-t">
-                    <Button asChild variant="outline" className="w-full">
-                        <a href={check.pdf_url} download target="_blank" rel="noopener noreferrer">
-                            <Download className="mr-2 h-4 w-4" />
-                            Descargar Reporte
-                        </a>
-                    </Button>
+                    <Button asChild variant="outline" className="w-full"><a href={check.pdf_url} download target="_blank" rel="noopener noreferrer"><Download className="mr-2 h-4 w-4" />Descargar Reporte</a></Button>
                 </div>
             )}
         </div>
     );
 };
-// ✅ FIN DE CAMBIOS
 
-
-const VinHistoryList = ({ history, isLoading }) => {
+const VinHistoryList = ({ history, isLoading, currentPage, totalPages, onPageChange }) => {
   if (isLoading) return <div className="space-y-4">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}</div>;
   if (!history || history.length === 0) return <div className="text-center text-muted-foreground py-8 px-4 border-2 border-dashed rounded-lg"><p>No tienes verificaciones anteriores.</p></div>;
-  return <div className="space-y-4">{history.map((check) => <HistoryItem key={check.id} check={check} />)}</div>;
+  
+  return (
+    <div className="space-y-4">
+      <div className="space-y-4">
+        {history.map((check) => <HistoryItem key={check.id} check={check} />)}
+      </div>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 pt-4 border-t">
+          <Button variant="outline" size="icon" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-sm font-medium text-muted-foreground">{currentPage} / {totalPages}</span>
+          <Button variant="outline" size="icon" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}>
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
 };
 
-
-// --- Componente Principal de la Página (Sin cambios) ---
 const VinCheckPage = () => {
-  const { vinCredits, historyLoading, vinHistory, handleCheckVin, showLowCreditAlert, decoding, decodedData, decodeVinWithFunction, resetDecoder } = useVinCheck();
-
+  const { vinCredits, showLowCreditAlert, vinHistory, historyLoading, handleCheckVin, decoding, decodedData, decodeVinWithFunction, resetDecoder, currentPage, totalPages, loadVinHistory } = useVinCheck();
   return (
     <div className="space-y-8">
       <header className="space-y-2">
@@ -222,7 +220,15 @@ const VinCheckPage = () => {
         <div className="lg:col-span-1">
           <Card className="shadow-lg">
             <CardHeader><CardTitle>Historial de Solicitudes</CardTitle><CardDescription>Revisa el estado de tus verificaciones.</CardDescription></CardHeader>
-            <CardContent><VinHistoryList history={vinHistory} isLoading={historyLoading} /></CardContent>
+            <CardContent>
+              <VinHistoryList 
+                history={vinHistory} 
+                isLoading={historyLoading}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={loadVinHistory}
+              />
+            </CardContent>
           </Card>
         </div>
       </main>
