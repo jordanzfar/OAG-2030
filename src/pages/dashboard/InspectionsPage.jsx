@@ -24,7 +24,8 @@ import { Calendar as CalendarIcon, Info, Download, Loader2, AlertTriangle, MapPi
 import { cn } from "@/lib/utils";
 import { useSupabaseData } from '@/hooks/useSupabaseData';
 import { useAuth } from '@/hooks/useAuth';
-import { groupedIaaLocations, groupedCopartLocations, flatIaaLocations, flatCopartLocations } from '@/data/auctionLocations'; // Asegúrate que la ruta sea correcta
+import { groupedIaaLocations, groupedCopartLocations, flatIaaLocations, flatCopartLocations } from '@/data/auctionLocations';
+import { supabase } from '@/lib/supabase'; // Asegúrate que esta ruta sea correcta
 
 // Zod Schema
 const locationSchema = z.discriminatedUnion("locationType", [
@@ -52,8 +53,38 @@ const inspectionSchema = z.object({
   exactLocationDetails: z.string().optional(),
 }).and(locationSchema);
 
-// Subcomponente para el historial de inspecciones
+// Subcomponente para el historial de inspecciones (VERSIÓN FINAL CORREGIDA)
 const InspectionHistory = ({ inspections, loading }) => {
+  const [isDownloading, setIsDownloading] = useState(null);
+
+  const handleDownload = async (filePath) => {
+    if (!filePath) return;
+
+    // ‼️ REEMPLAZA ESTO con el nombre exacto de tu bucket en Supabase
+    const bucketName = 'inspection-reports'; 
+
+    setIsDownloading(filePath);
+
+    try {
+      const { data, error } = await supabase
+        .storage
+        .from(bucketName)
+        .createSignedUrl(filePath, 60, {
+          download: true,
+        });
+
+      if (error) throw error;
+
+      window.open(data.signedUrl, '_blank');
+
+    } catch (error) {
+      console.error('Error al generar la URL de descarga:', error);
+      alert('No se pudo generar el enlace de descarga. Por favor, inténtalo de nuevo.');
+    } finally {
+      setIsDownloading(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -93,7 +124,7 @@ const InspectionHistory = ({ inspections, loading }) => {
     <div className="space-y-4">
       {inspections.map((inspection) => (
         <div key={inspection.id} className="p-4 border rounded-lg bg-background hover:bg-muted/20 transition-colors">
-          <div className="flex justify-between items-start gap-4">
+          <div className="flex justify-between items-start gap-4 flex-wrap">
             <div>
               <h4 className="font-semibold text-lg">Stock# {inspection.stock_number}</h4>
               <p className="text-sm text-muted-foreground">
@@ -104,21 +135,31 @@ const InspectionHistory = ({ inspections, loading }) => {
               {getStatusText(inspection.status)}
             </span>
           </div>
+
           {inspection.status === 'completed' && inspection.report_url && (
             <div className="mt-4 pt-4 border-t">
-              <a href={inspection.report_url} target="_blank" rel="noopener noreferrer" download>
-                <Button variant="outline" className="w-full sm:w-auto">
-                  <Download className="mr-2 h-4 w-4" /> Descargar Reporte
-                </Button>
-              </a>
+              <Button 
+                variant="outline" 
+                className="w-full sm:w-auto"
+                onClick={() => handleDownload(inspection.report_url)}
+                disabled={isDownloading === inspection.report_url}
+              >
+                {isDownloading === inspection.report_url ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                Descargar Reporte
+              </Button>
             </div>
           )}
+
           {inspection.status === 'pending_payment' && (
-             <div className="mt-4 pt-4 border-t">
+            <div className="mt-4 pt-4 border-t">
                  <Button className="w-full sm:w-auto" onClick={() => window.open(`https://buy.stripe.com/test_8x2eV69LA9v55yo366ebu00?stock=${inspection.stock_number}`, '_blank')}>
                     Proceder al Pago
                 </Button>
-            </div>
+           </div>
           )}
         </div>
       ))}
@@ -368,7 +409,7 @@ const InspectionsPage = () => {
                 </div>
                 
                 <div className="space-y-4 p-4 border rounded-md bg-muted/30">
-                     <h3 className="font-semibold text-foreground">3. Instrucciones Adicionales</h3>
+                    <h3 className="font-semibold text-foreground">3. Instrucciones Adicionales</h3>
                     <FormField control={form.control} name="comments" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Instrucciones Especiales (Opcional)</FormLabel>

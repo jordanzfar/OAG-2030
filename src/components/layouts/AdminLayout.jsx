@@ -5,12 +5,12 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, LayoutDashboard, FileStack, FileCheck2, MessageSquare, Banknote, Users, BarChart2, Settings, Bell, DollarSign, Shield } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/components/ui/use-toast';
 import AdminNotificationsWidget from '@/components/admin/AdminNotificationsWidget';
 import { NotificationProvider, useNotifications } from '@/context/NotificationContext.jsx';
+import {  LogOut, LayoutDashboard, FileStack,  FileCheck2, MessageSquare, Banknote, Users, BarChart2, Settings, Bell, DollarSign, Shield, ClipboardCheck } from 'lucide-react';
 
 const SidebarNav = () => {
     const location = useLocation();
@@ -20,6 +20,7 @@ const SidebarNav = () => {
     const adminSidebarNavItems = [
         { title: "Panel General", href: "/admin", icon: LayoutDashboard, roles: ['admin', 'support', 'validation', 'finance'] },
         { title: "Solicitudes", href: "/admin/requests", icon: FileStack, roles: ['admin', 'support', 'validation'] },
+        { title: "Inspecciones", href: "/admin/inspections", icon: ClipboardCheck, roles: ['admin', 'support', 'validation'] },
         { title: "Documentos", href: "/admin/documents", icon: FileCheck2, roles: ['admin', 'validation'] },
         { title: "Chat", href: "/admin/chat", icon: MessageSquare, roles: ['admin', 'support'], notificationCount: unreadMessageCount },
         { title: "Pagos", href: "/admin/payments", icon: Banknote, roles: ['admin', 'finance'] },

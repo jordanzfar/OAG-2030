@@ -41,6 +41,8 @@ import AdminSettingsPage from '@/pages/admin/AdminSettingsPage';
 import AdminFinancePage from '@/pages/admin/AdminFinancePage';
 import AdminVerificationPage from '@/pages/admin/AdminVerificationPage';
 import AdminNotificationsPage from '@/pages/admin/AdminNotificationsPage';
+import AdminInspectionsPage from './pages/admin/inspections/AdminInspectionsPage';
+
 
 
 // --- Componente para Proteger Rutas (Sin cambios) ---
@@ -124,6 +126,7 @@ function App() {
                                 </Route>
                                 <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin', 'support', 'validation', 'finance']}><AdminLayout /></ProtectedRoute>}>
                                     <Route index element={<AdminDashboardPage />} />
+                                    <Route path="inspections" element={<AdminInspectionsPage />} />
                                     <Route path="requests" element={<AdminRequestsPage />} />
                                     <Route path="documents" element={<AdminDocumentsPage />} />
                                     <Route path="chat" element={<AdminChatListPage />} />
