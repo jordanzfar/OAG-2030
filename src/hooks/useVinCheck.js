@@ -16,8 +16,11 @@ export const useVinCheck = () => {
     const [vinHistory, setVinHistory] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(true);
 
-    // ✅ CORRECCIÓN: Se envuelve en useCallback para estabilizar la función.
-    // Ahora solo se recreará si el objeto `user` o `toast` realmente cambian.
+    // --- AÑADIDO INDISPENSABLE: Estados para el pre-chequeo del VIN ---
+    const [decoding, setDecoding] = useState(false);
+    const [decodedData, setDecodedData] = useState([]);
+
+
     const loadCredits = useCallback(async () => {
         if (!user) return;
         
@@ -38,9 +41,8 @@ export const useVinCheck = () => {
         }
 
         setVinCredits(data?.vin_credits ?? 0);
-    }, [user, toast]); // Dependencias estables
+    }, [user, toast]);
 
-    // ✅ CORRECCIÓN: También se estabiliza esta función con useCallback.
     const loadVinHistory = useCallback(async () => {
         if (!user) return;
         setHistoryLoading(true);
@@ -63,21 +65,53 @@ export const useVinCheck = () => {
         } finally {
             setHistoryLoading(false);
         }
-    }, [user, toast]); // Dependencias estables
+    }, [user, toast]);
 
-    // ✅ CORRECCIÓN CLAVE: El useEffect ahora depende de las funciones estabilizadas.
-    // Esto rompe el bucle infinito.
     useEffect(() => {
-    if (user) {
-        loadCredits();
-        loadVinHistory();
-    } else {
-        setHistoryLoading(false);
-    }
-    }, [user, loadCredits, loadVinHistory]); // Dependencias correctas y estables.
+        if (user) {
+            loadCredits();
+            loadVinHistory();
+        } else {
+            setHistoryLoading(false);
+        }
+    }, [user, loadCredits, loadVinHistory]);
+    
+    // --- AÑADIDO INDISPENSABLE: Funciones para el pre-chequeo del VIN ---
 
+    // Función para limpiar los datos del vehículo decodificado
+    const resetDecoder = useCallback(() => {
+        setDecodedData([]);
+    }, []);
 
-    // --- El resto de tu código se mantiene igual, ya es correcto ---
+    // Función que llama a tu Supabase Edge Function para decodificar el VIN
+    const decodeVinWithFunction = useCallback(async (vin) => {
+        if (!vin || vin.length !== 17) {
+            resetDecoder();
+            return;
+        }
+        setDecoding(true);
+        resetDecoder(); // Limpia resultados anteriores
+        try {
+            const { data, error } = await supabase.functions.invoke('vpic-decode-vin', {
+                body: { vin },
+            });
+            if (error) throw error;
+            if (data.results) {
+                setDecodedData(data.results);
+            }
+        } catch (error) {
+            console.error("Error al decodificar VIN:", error);
+            toast({
+                variant: "destructive",
+                title: "Error de Decodificación",
+                description: "No se pudo obtener la información del vehículo. Inténtalo de nuevo.",
+            });
+            resetDecoder();
+        } finally {
+            setDecoding(false);
+        }
+    }, [supabase, toast, resetDecoder]);
+
 
     const consumeCredit = async () => {
         if (!user || vinCredits === null || vinCredits <= 0) return false;
@@ -137,5 +171,10 @@ export const useVinCheck = () => {
         setShowLowCreditAlert,
         setShowNoCreditModal,
         LOW_CREDIT_THRESHOLD,
+        // --- AÑADIDO INDISPENSABLE: Exportar nuevas variables y funciones ---
+        decoding,
+        decodedData,
+        decodeVinWithFunction,
+        resetDecoder,
     };
 };

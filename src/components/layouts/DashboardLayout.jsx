@@ -24,7 +24,6 @@ const sidebarNavItems = [
     { title: "Documentos", href: "/dashboard/documents", icon: UploadCloud },
     { title: "Notificaciones", href: "/dashboard/notifications", icon: Bell },
     { title: "Perfil", href: "/dashboard/profile", icon: User },
-    { title: "Chat", href: "/dashboard/chat", icon: MessageSquare },
     
 ];
 
