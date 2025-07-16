@@ -1,188 +1,163 @@
-
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, FileText, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CheckCircle, AlertCircle, Clock, FileText, FolderOpen } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useSupabaseData } from '@/hooks/useSupabaseData';
 import { requiredDocuments } from '@/components/legalization/constants';
 
-const LegalizationHistory = ({ legalizations, onOpenDocumentModal }) => {
-  const { user } = useSupabaseAuth();
-  const { fetchRecords } = useSupabaseData();
-  const [documentsData, setDocumentsData] = useState({});
-
-  useEffect(() => {
-    if (user && legalizations.length > 0) {
-      loadDocumentsForLegalizations();
-    }
-  }, [user, legalizations]);
-
-  const loadDocumentsForLegalizations = async () => {
-    if (!user) return;
-
-    const documentsPromises = legalizations.map(async (legalization) => {
-      const result = await fetchRecords('documents', { 
-        user_id: user.id, 
-        legalization_id: legalization.id 
-      });
-      return {
-        legalizationId: legalization.id,
-        documents: result.success ? result.data || [] : []
-      };
-    });
-
-    const results = await Promise.all(documentsPromises);
-    const documentsMap = {};
-    results.forEach(({ legalizationId, documents }) => {
-      documentsMap[legalizationId] = documents;
-    });
-    setDocumentsData(documentsMap);
-  };
-
-  const getDocumentStats = (legalizationId) => {
-    const documents = documentsData[legalizationId] || [];
-    const totalRequired = requiredDocuments.length;
-    const uploaded = documents.length;
-    const approved = documents.filter(doc => doc.status === 'approved').length;
-    const rejected = documents.filter(doc => doc.status === 'rejected').length;
-    const pending = documents.filter(doc => doc.status === 'pending').length;
-
-    return {
-      total: totalRequired,
-      uploaded,
-      approved,
-      rejected,
-      pending,
-      missing: totalRequired - uploaded,
-      completionPercentage: Math.round((uploaded / totalRequired) * 100)
-    };
-  };
-
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      completed: { bg: 'bg-green-100', text: 'text-green-800', label: 'Completado' },
-      approved: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Aprobado' },
-      in_review: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'En Revisión' },
-      rejected: { bg: 'bg-red-100', text: 'text-red-800', label: 'Rechazado' },
-      pending: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Pendiente' }
-    };
-
-    const config = statusConfig[status] || statusConfig.pending;
-    
-    return (
-      <span className={`px-2 py-1 rounded text-xs ${config.bg} ${config.text}`}>
-        {config.label}
-      </span>
-    );
-  };
-
-  const DocumentProgressBar = ({ stats }) => (
-    <div className="mt-3">
-      <div className="flex justify-between text-xs mb-1">
-        <span>Documentos</span>
-        <span>{stats.uploaded}/{stats.total}</span>
-      </div>
-      <div className="w-full bg-gray-200 rounded-full h-1.5">
-        <div 
-          className="bg-blue-600 h-1.5 rounded-full transition-all duration-300" 
-          style={{ width: `${stats.completionPercentage}%` }}
-        ></div>
-      </div>
-      <div className="flex justify-between text-xs mt-1 text-muted-foreground">
-        <span className="flex items-center">
-          <CheckCircle className="w-3 h-3 mr-1 text-green-500" />
-          {stats.approved} aprobados
-        </span>
-        {stats.rejected > 0 && (
-          <span className="flex items-center">
-            <AlertCircle className="w-3 h-3 mr-1 text-red-500" />
-            {stats.rejected} rechazados
-          </span>
-        )}
-        {stats.pending > 0 && (
-          <span className="flex items-center">
-            <Clock className="w-3 h-3 mr-1 text-yellow-500" />
-            {stats.pending} en revisión
-          </span>
-        )}
-      </div>
+// ✨ MEJORA: Componente de estado vacío, más atractivo y reutilizable.
+const EmptyState = () => (
+    <div className="text-center py-12 px-6 bg-card border border-dashed rounded-lg">
+        <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+        <h3 className="mt-4 text-lg font-semibold">No hay solicitudes todavía</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+            Cuando inicies tu primer trámite, aparecerá aquí.
+        </p>
     </div>
-  );
+);
 
-  return (
-    <Card className="bg-card border-border shadow-lg">
-      <CardHeader>
-        <CardTitle>Historial de Legalizaciones</CardTitle>
-        <CardDescription>Estado de solicitudes anteriores y progreso de documentos.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {legalizations.length > 0 ? (
-          <div className="space-y-4">
-            {legalizations.map((legalization) => {
-              const stats = getDocumentStats(legalization.id);
-              
-              return (
-                <div key={legalization.id} className="p-4 border border-border rounded-lg bg-secondary">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h4 className="font-medium">VIN: {legalization.vin}</h4>
-                      <p className="text-sm text-muted-foreground">
+// ✨ MEJORA: Componente interno para una tarjeta de legalización limpia.
+const LegalizationItemCard = ({ legalization, documents, onOpenDocumentModal }) => {
+    const stats = useMemo(() => {
+        const totalRequired = requiredDocuments.length;
+        const uploadedDocs = documents || [];
+        const uploaded = uploadedDocs.length;
+        const approved = uploadedDocs.filter(doc => doc.status === 'approved').length;
+        const rejected = uploadedDocs.filter(doc => doc.status === 'rejected').length;
+        const pending = uploadedDocs.filter(doc => doc.status === 'pending').length;
+
+        return {
+            total: totalRequired,
+            uploaded,
+            approved,
+            rejected,
+            pending,
+            missing: totalRequired - uploaded,
+            completionPercentage: totalRequired > 0 ? Math.round((uploaded / totalRequired) * 100) : 0
+        };
+    }, [documents]);
+
+    const statusVariantMap = {
+        completed: 'success',
+        approved: 'success',
+        in_review: 'secondary',
+        rejected: 'destructive',
+        pending: 'outline',
+    };
+
+    return (
+        <Card className="bg-card shadow-sm hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
+                <div>
+                    <CardTitle className="text-lg">VIN: {legalization.vin}</CardTitle>
+                    <CardDescription>
                         {legalization.vehicle_info.marca} {legalization.vehicle_info.modelo} {legalization.vehicle_info.ano}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Creado: {new Date(legalization.created_at).toLocaleDateString()}
-                      </p>
-                      
-                      {/* Document Progress */}
-                      <DocumentProgressBar stats={stats} />
-                      
-                      {/* Missing Documents Alert */}
-                      {stats.missing > 0 && (
-                        <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-950/20 rounded border border-yellow-200 dark:border-yellow-800">
-                          <p className="text-xs text-yellow-800 dark:text-yellow-200">
-                            <AlertCircle className="w-3 h-3 inline mr-1" />
-                            Faltan {stats.missing} documento(s) por subir
-                          </p>
-                        </div>
-                      )}
-                      
-                      {/* Rejected Documents Alert */}
-                      {stats.rejected > 0 && (
-                        <div className="mt-2 p-2 bg-red-50 dark:bg-red-950/20 rounded border border-red-200 dark:border-red-800">
-                          <p className="text-xs text-red-800 dark:text-red-200">
-                            <AlertCircle className="w-3 h-3 inline mr-1" />
-                            {stats.rejected} documento(s) rechazado(s) - requieren nueva subida
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex flex-col items-end space-y-2">
-                      {(legalization.status === 'pending' || legalization.status === 'in_review') && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onOpenDocumentModal(legalization)}
-                          className="text-xs"
-                        >
-                          <FolderOpen className="w-3 h-3 mr-1" />
-                          {stats.missing > 0 || stats.rejected > 0 ? 'Subir Documentos' : 'Ver Documentos'}
-                        </Button>
-                      )}
-                      {getStatusBadge(legalization.status)}
-                    </div>
-                  </div>
+                    </CardDescription>
                 </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-muted-foreground italic">No hay historial disponible.</p>
-        )}
-      </CardContent>
-    </Card>
-  );
+                <Badge variant={statusVariantMap[legalization.status] || 'outline'} className="capitalize">
+                    {legalization.status.replace('_', ' ')}
+                </Badge>
+            </CardHeader>
+            <CardContent className="space-y-3">
+                {/* ✨ MEJORA: Barra de progreso con el componente de shadcn/ui */}
+                <div>
+                    <div className="flex justify-between text-sm mb-1.5">
+                        <span className="font-medium">Progreso de Documentos</span>
+                        <span className="text-muted-foreground">{stats.uploaded}/{stats.total}</span>
+                    </div>
+                    <Progress value={stats.completionPercentage} className="h-2" />
+                    <div className="flex flex-wrap justify-end gap-x-3 text-xs mt-1.5 text-muted-foreground">
+                        <span className="flex items-center"><CheckCircle className="w-3 h-3 mr-1 text-green-500" />{stats.approved} Aprobados</span>
+                        {stats.rejected > 0 && <span className="flex items-center"><AlertCircle className="w-3 h-3 mr-1 text-red-500" />{stats.rejected} Rechazados</span>}
+                        {stats.pending > 0 && <span className="flex items-center"><Clock className="w-3 h-3 mr-1 text-yellow-500" />{stats.pending} en Revisión</span>}
+                    </div>
+                </div>
+
+                {/* ✨ MEJORA: Alertas con el componente de shadcn/ui */}
+                {stats.rejected > 0 && (
+                    <Alert variant="destructive" className="py-2">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="text-xs">
+                            Hay {stats.rejected} documento(s) rechazado(s). Por favor, súbelos de nuevo.
+                        </AlertDescription>
+                    </Alert>
+                )}
+
+                <div className="flex justify-between items-center pt-2">
+                     <p className="text-sm text-muted-foreground">
+                        Solicitado: {new Date(legalization.created_at).toLocaleDateString()}
+                    </p>
+                    <Button variant="secondary" size="sm" onClick={() => onOpenDocumentModal(legalization)}>
+                        <FolderOpen className="w-4 h-4 mr-2" />
+                        Gestionar Documentos
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
+
+
+const LegalizationHistory = ({ legalizations, onOpenDocumentModal }) => {
+    const { user } = useSupabaseAuth();
+    const { fetchRecords } = useSupabaseData();
+    const [documentsMap, setDocumentsMap] = useState({});
+    const [isLoadingDocs, setIsLoadingDocs] = useState(true);
+
+    // ✨ MEJORA CRÍTICA DE RENDIMIENTO: Evita el problema N+1.
+    const loadAllDocuments = useCallback(async () => {
+        if (!user || legalizations.length === 0) {
+            setIsLoadingDocs(false);
+            return;
+        }
+
+        setIsLoadingDocs(true);
+        const legalizationIds = legalizations.map(leg => leg.id);
+
+        // Una sola llamada para traer todos los documentos de todas las legalizaciones
+        const result = await fetchRecords('documents', { user_id: user.id }, {
+            filter: { column: 'legalization_id', operator: 'in', value: legalizationIds }
+        });
+
+        if (result.success) {
+            const newDocumentsMap = {};
+            // Agrupamos los documentos por legalization_id en el cliente
+            result.data.forEach(doc => {
+                if (!newDocumentsMap[doc.legalization_id]) {
+                    newDocumentsMap[doc.legalization_id] = [];
+                }
+                newDocumentsMap[doc.legalization_id].push(doc);
+            });
+            setDocumentsMap(newDocumentsMap);
+        }
+        setIsLoadingDocs(false);
+
+    }, [user, legalizations, fetchRecords]);
+
+    useEffect(() => {
+        loadAllDocuments();
+    }, [loadAllDocuments]);
+
+    if (legalizations.length === 0) {
+        return <EmptyState />;
+    }
+
+    return (
+        <div className="space-y-4">
+            {legalizations.map((legalization) => (
+                <LegalizationItemCard
+                    key={legalization.id}
+                    legalization={legalization}
+                    documents={documentsMap[legalization.id]} // Pasamos los documentos correspondientes
+                    onOpenDocumentModal={onOpenDocumentModal}
+                />
+            ))}
+        </div>
+    );
 };
 
 export default LegalizationHistory;

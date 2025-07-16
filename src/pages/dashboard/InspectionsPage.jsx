@@ -218,7 +218,7 @@ const InspectionsPage = () => {
         return;
     }
     setIsLoadingHistory(true);
-    const { success, data } = await fetchRecords('inspections', { user_id: user.id }, { orderBy: { column: 'created_at', ascending: false } });
+    const { success, data } = await fetchRecords('inspections', [{ column: 'user_id', operator: 'eq', value: user.id }], { orderBy: { column: 'created_at', ascending: false } });
     if (success) {
       setInspections(data || []);
     }

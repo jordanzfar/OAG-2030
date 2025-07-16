@@ -28,7 +28,8 @@ const NotificationsWidget = () => {
   const loadNotifications = async () => {
     if (!user) return;
 
-    const result = await fetchRecords('notifications', { user_id: user.id }, {
+    const result = await fetchRecords('notifications', 
+  [{ column: 'user_id', operator: 'eq', value: user.id }], {
       orderBy: { column: 'created_at', ascending: false },
       limit: 10
     });
