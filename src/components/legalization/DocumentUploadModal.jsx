@@ -9,6 +9,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useSupabaseData } from '@/hooks/useSupabaseData';
 import { requiredDocuments } from '@/components/legalization/constants';
+import { sanitizeFileName } from '@/utils/fileUtils'; // 👈 1. Importa la función
+
 
 const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploaded }) => {
   const { toast } = useToast();
@@ -100,20 +102,23 @@ const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploade
 
     try {
       const uploadPromises = Object.entries(uploadedFiles).map(async ([key, file]) => {
-        const filePath = `${user.id}/legalizations/${legalization.id}/${key}_${file.name}`;
+        const cleanFileName = sanitizeFileName(file.name); 
+        const filePath = `${user.id}/legalizations/${legalization.id}/${key}_${cleanFileName}`;
         const uploadResult = await uploadFile('documents', filePath, file);
         
         if (uploadResult.success) {
-          return createDocument(user.id, {
-            legalization_id: legalization.id,
-            document_type: key,
-            file_name: file.name,
-            file_path: filePath,
-            file_size: file.size,
-            mime_type: file.type,
-            status: 'pending'
-          });
-        }
+              return createDocument({
+        user_id: user.id,
+        legalization_id: legalization.id,
+        document_type: key,
+        file_name: cleanFileName,
+        file_path: filePath,
+        file_size: file.size,
+        mime_type: file.type,
+        status: 'pending'
+    });
+}
+
         return null;
       });
 
