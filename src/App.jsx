@@ -43,6 +43,7 @@ import AdminVerificationPage from '@/pages/admin/AdminVerificationPage';
 import AdminNotificationsPage from '@/pages/admin/AdminNotificationsPage';
 import AdminInspectionsPage from './pages/admin/inspections/AdminInspectionsPage';
 import AdminAuctionBidsPage from '@/pages/admin/auction-bids/AdminAuctionBidsPage';
+import ManageLegalizationsPage from '@/pages/admin/legalizations/ManageLegalizationsPage';
 
 // ✅ INICIO DE CAMBIOS
 import AdminVinRequestsPage from './pages/admin/AdminVinRequestsPage';
@@ -132,6 +133,7 @@ function App() {
                                     {/* ✅ INICIO DE CAMBIOS */}
                                     <Route path="vin-requests" element={<AdminVinRequestsPage />} />
                                     <Route path="auction-bids" element={<AdminAuctionBidsPage />} />
+                                    <Route path="/admin/legalizations" element={<ManageLegalizationsPage />} />
                                     {/* ✅ FIN DE CAMBIOS */}
                                     <Route path="documents" element={<AdminDocumentsPage />} />
                                     <Route path="chat" element={<AdminChatListPage />} />

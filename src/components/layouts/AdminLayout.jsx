@@ -23,6 +23,8 @@ const SidebarNav = () => {
         { title: "Inspecciones", href: "/admin/inspections", icon: ClipboardCheck, roles: ['admin', 'support', 'validation'] },
         { title: "VIN Checks", href: "/admin/vin-requests", icon: SearchCheck, roles: ['admin', 'support'] },
         { title: "Pujas de Subasta", href: "/admin/auction-bids", icon: Gavel, roles: ['admin', 'finance', 'support'] },
+        { title: "Legalizaciones", href: "/admin/legalizations", icon: FileCheck2, roles: ['admin', 'validation'] },
+       
         //{ title: "Documentos", href: "/admin/documents", icon: FileCheck2, roles: ['admin', 'validation'] },
         //{ title: "Chat", href: "/admin/chat", icon: MessageSquare, roles: ['admin', 'support'], notificationCount: unreadMessageCount },
         //{ title: "Pagos", href: "/admin/payments", icon: Banknote, roles: ['admin', 'finance'] },

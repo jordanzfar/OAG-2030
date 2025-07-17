@@ -9,7 +9,7 @@ export const useAdminData = () => {
     const { user } = useSupabaseAuth();
     const queries = useAdminQueries();
     const actions = useAdminActions();
-    const { toast } = useToast(); // ✅ Hook de notificaciones
+    const { toast } = useToast(); 
 
     const fetchAllUsers = useCallback(async () => {
         const { data, error } = await supabase
@@ -133,10 +133,57 @@ export const useAdminData = () => {
 
     const loading = queries.loading || actions.loading;
 
+    const fetchAllLegalizations = useCallback(async () => {
+    setLoading(true); // Asumo que tienes un estado de loading en este hook
+    const { data, error } = await supabase.rpc('get_all_legalizations');
+    setLoading(false);
+
+    if (error) {
+        console.error('Error fetching all legalizations:', error);
+        // Aquí podrías usar un toast si lo tienes configurado en este hook
+        return { success: false, data: null, error };
+    }
+    return { success: true, data, error: null };
+}, []);
+
+const getDocumentsForLegalization = useCallback(async (legalizationId) => {
+    if (!legalizationId) return { success: false, data: null, error: 'No ID provided' };
+    
+    const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('legalization_id', legalizationId);
+
+    if (error) {
+        console.error('Error fetching documents:', error);
+        return { success: false, data: null, error };
+    }
+    return { success: true, data, error: null };
+}, []);
+
+/**
+ * Genera una URL de descarga segura para un documento en Supabase Storage.
+ */
+const getDocumentDownloadUrl = useCallback(async (filePath) => {
+    const { data, error } = await supabase
+        .storage
+        .from('documents') // Asegúrate que este es el nombre de tu bucket
+        .createSignedUrl(filePath, 60 * 5); // URL válida por 5 minutos
+
+    if (error) {
+        console.error('Error creating signed URL:', error);
+        return { success: false, url: null };
+    }
+    return { success: true, url: data.signedUrl };
+}, []);
+
     return {
         loading,
         fetchAllRequests: queries.fetchAllRequests,
         fetchAllDocuments: queries.fetchAllDocuments,
+        fetchAllLegalizations: queries.fetchAllLegalizations,
+        getDocumentsForLegalization,
+        getDocumentDownloadUrl,
         fetchAllUsers,
         fetchAllDeposits: queries.fetchAllDeposits,
         updateRequestStatus: actions.updateRequestStatus,
@@ -148,5 +195,6 @@ export const useAdminData = () => {
         createNotification,
         sendAdminMessage,
         updateChatStatus, // ✅ Se exporta la nueva función
+        
     };
 };
