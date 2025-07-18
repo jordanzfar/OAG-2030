@@ -19,39 +19,53 @@ serve(async (req) => {
   }
 
   try {
-    console.log("Función 'capture-deposit' invocada.");
-    
+    // 1. Autenticación y validación de admin
     const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
     const authHeader = req.headers.get('Authorization')!
     const { data: { user } } = await supabaseAdmin.auth.getUser(authHeader.replace('Bearer ', ''))
     if (!user) throw new Error("Usuario no autenticado.");
 
     const { data: profile } = await supabaseAdmin.from('users_profile').select('role').eq('user_id', user.id).single()
-    if (profile?.role !== 'admin') {
-      throw new Error("Acceso no autorizado. Se requiere rol de administrador.");
-    }
+    if (profile?.role !== 'admin') throw new Error("Acceso no autorizado.");
     
     const { payment_intent_id } = await req.json()
-    if (!payment_intent_id) {
-      throw new Error("Falta el 'payment_intent_id'.")
+    if (!payment_intent_id) throw new Error("Falta el 'payment_intent_id'.")
+
+    // 2. Obtener la solicitud original para saber cuánto poder de compra restar
+    const { data: request, error: requestError } = await supabaseAdmin
+      .from('power_buying_requests')
+      .select('user_id, amount')
+      .eq('payment_intent_id', payment_intent_id)
+      .single();
+    
+    if (requestError || !request) throw new Error("No se encontró la solicitud de compra original.");
+
+    // 3. Capturar el pago en Stripe
+    const paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id);
+    if (paymentIntent.status === 'requires_capture') {
+      await stripe.paymentIntents.capture(payment_intent_id);
+    } else if (paymentIntent.status !== 'succeeded') {
+      throw new Error(`El pago no se puede capturar porque su estado es '${paymentIntent.status}'.`);
     }
-    console.log(`Intentando capturar Payment Intent: ${payment_intent_id}`);
 
-    await stripe.paymentIntents.capture(payment_intent_id)
-    console.log("Payment Intent capturado en Stripe.");
+    // 4. Restar el poder de compra del perfil del usuario
+    await supabaseAdmin.rpc('subtract_buying_power', {
+      user_id_param: request.user_id,
+      amount_to_subtract: request.amount
+    });
 
+    // 5. Actualizar el estado de la solicitud a 'cobrado'
     await supabaseAdmin
       .from('power_buying_requests')
-      .update({ status: 'charged_for_debt' })
+      .update({ status: 'charged for debt' }) // <-- 1. CAMBIO DE ESTADO
       .eq('payment_intent_id', payment_intent_id)
-    console.log("Estado actualizado en la base de datos.");
 
-    return new Response(JSON.stringify({ message: "Depósito capturado con éxito." }), {
+    return new Response(JSON.stringify({ message: "Depósito capturado y poder de compra actualizado." }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
   } catch (error) {
-    console.error("¡ERROR EN capture-deposit!", error); // <-- LÍNEA CLAVE AÑADIDA
+    console.error("¡ERROR EN capture-deposit!", error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
