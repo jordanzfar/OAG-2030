@@ -7,10 +7,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LogOut, LayoutDashboard, FileText, SearchCheck, FileBadge, Coins as HandCoins, Banknote, User, UploadCloud, MessageSquare, Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabase'; // Importamos supabase directamente para signOut
 import { useToast } from '@/components/ui/use-toast';
 import NotificationsWidget from '@/components/dashboard/NotificationsWidget';
 import logo from '@/assets/OPULENT-BRONZE.png';
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
 
 const sidebarNavItems = [
     { title: "Panel Principal", href: "/dashboard", icon: LayoutDashboard },
@@ -28,12 +28,14 @@ const sidebarNavItems = [
 ];
 
 const DashboardLayout = () => {
+    const supabase = useSupabaseClient();
     const location = useLocation();
     const navigate = useNavigate();
     const { toast } = useToast();
     // --- INICIO DE LA CORRECCIÓN 1 ---
     // Ya no necesitamos `logout` de useAuth, ni `signOut` del otro hook. Lo haremos directo.
     const { user, userProfile } = useAuth();
+
 
     // --- FIN DE LA CORRECCIÓN 1 ---
 

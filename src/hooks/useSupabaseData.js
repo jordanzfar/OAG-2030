@@ -1,11 +1,11 @@
 import { useState, useCallback } from 'react'; // 1. Importa useCallback
-import { supabase } from '@/lib/supabase';
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { useToast } from '@/components/ui/use-toast';
 
 export const useSupabaseData = () => {
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
-
+const supabase = useSupabaseClient();
     // ====================================================================
     // --- INICIO DE LA CORRECCIÓN ---
     // Envolvemos TODAS las funciones que se exportan en useCallback.

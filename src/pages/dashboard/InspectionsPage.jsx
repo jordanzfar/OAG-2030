@@ -25,7 +25,9 @@ import { cn } from "@/lib/utils";
 import { useSupabaseData } from '@/hooks/useSupabaseData';
 import { useAuth } from '@/hooks/useAuth';
 import { groupedIaaLocations, groupedCopartLocations, flatIaaLocations, flatCopartLocations } from '@/data/auctionLocations';
-import { supabase } from '@/lib/supabase'; // Asegúrate que esta ruta sea correcta
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
+
+; // Asegúrate que esta ruta sea correcta
 
 // Zod Schema
 const locationSchema = z.discriminatedUnion("locationType", [

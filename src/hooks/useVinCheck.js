@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/components/ui/use-toast';
 
 export const useVinCheck = () => {
   const ITEMS_PER_PAGE = 3; 
-  
+  const supabase = useSupabaseClient();
   const { toast } = useToast();
   const { user } = useAuth();
   

@@ -1,5 +1,7 @@
 import { useCallback } from 'react';
-import { supabase } from '@/lib/supabase'; // Asegúrate que la ruta es correcta
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
+
+; // Asegúrate que la ruta es correcta
 import { useSupabaseAuth } from './useSupabaseAuth'; // Necesitamos el usuario admin
 import { useAdminQueries } from '@/hooks/useAdminQueries';
 import { useAdminActions } from '@/hooks/useAdminActions';

@@ -11,7 +11,9 @@ import autoTable from 'jspdf-autotable';
 
 // Data y Cliente Supabase
 import { groupedIaaLocations, groupedCopartLocations, flatIaaLocations, flatCopartLocations } from '@/data/auctionLocations';
-import { supabase } from '@/lib/supabase'; 
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
+
+; 
 
 // Hooks y Componentes UI
 import { useAuth } from '@/hooks/useAuth';

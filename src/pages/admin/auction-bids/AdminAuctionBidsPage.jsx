@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabase } from '@/lib/supabase';
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { Loader2 } from 'lucide-react';
 import { columns } from './columns';
 import { DataTable } from '../inspections/data-table'; // La ruta a nuestro componente reutilizable
@@ -10,7 +10,7 @@ const AdminAuctionBidsPage = () => {
   const [bids, setBids] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedBid, setSelectedBid] = useState(null);
-
+const supabase = useSupabaseClient();
   // Definimos las opciones para el menú desplegable de estados
   const statusOptions = [
     { value: 'pending', label: 'Pendiente' },

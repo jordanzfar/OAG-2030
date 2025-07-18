@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase'; // Asegúrate que esta ruta sea la correcta
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
+
+; // Asegúrate que esta ruta sea la correcta
 import { columns } from './columns';
 import { DataTable } from './data-table';
 import { EditInspectionSheet } from './EditInspectionSheet';

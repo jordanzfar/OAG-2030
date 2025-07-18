@@ -8,14 +8,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabase';
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
 
 const SUPPORT_USER_ID = import.meta.env.VITE_SUPABASE_SUPPORT_USER_ID;
 
 const ChatPage = () => {
     const { toast } = useToast();
     const { user } = useAuth();
-
+const supabase = useSupabaseClient();
     // Estados
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');

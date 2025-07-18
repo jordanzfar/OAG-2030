@@ -7,7 +7,9 @@ import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
 import { UserPlus, Loader2, CheckCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase'; // Importamos supabase directamente
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
+
+; // Importamos supabase directamente
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import RegistrationForm from '@/components/registration/RegistrationForm';
 import { registrationSchema } from '@/components/registration/schemas';

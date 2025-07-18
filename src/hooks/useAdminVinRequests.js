@@ -1,12 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { useToast } from '@/components/ui/use-toast';
 
 export const useAdminVinRequests = () => {
   const { toast } = useToast();
   const [requests, setRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+  const supabase = useSupabaseClient();
   const fetchRequests = useCallback(async () => {
     setIsLoading(true);
     try {

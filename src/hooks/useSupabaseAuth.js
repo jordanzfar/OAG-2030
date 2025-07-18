@@ -1,9 +1,12 @@
-/* ARCHIVO: src/hooks/useSupabaseAuth.js (Versión Final y Robusta) */
+/* ARCHIVO: src/hooks/useSupabaseAuth.js (Versión Corregida) */
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useSupabaseClient } from '@supabase/auth-helpers-react'; // ✅ 1. Importa el hook correcto
 import { useToast } from "@/components/ui/use-toast";
 
 export const useSupabaseAuth = () => {
+    // ✅ 2. Obtiene el cliente único del contexto que configuramos en main.jsx
+    const supabase = useSupabaseClient();
+    
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState(null);
     const [session, setSession] = useState(null);
@@ -11,7 +14,7 @@ export const useSupabaseAuth = () => {
     const { toast } = useToast();
 
     const loadUserProfile = useCallback(async (userId) => {
-        if (!userId) {
+        if (!userId || !supabase) {
             setUserProfile(null);
             return;
         }
@@ -28,10 +31,11 @@ export const useSupabaseAuth = () => {
             console.error('[loadUserProfile] ERROR:', error);
             setUserProfile(null);
         }
-    }, []);
+    }, [supabase]); // `supabase` es ahora una dependencia
 
     useEffect(() => {
-        // 1. CARGA INICIAL: Se ejecuta solo una vez al montar el componente.
+        if (!supabase) return;
+
         const initializeSession = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             setSession(session);
@@ -42,22 +46,17 @@ export const useSupabaseAuth = () => {
                 await loadUserProfile(currentUser.id);
             }
             
-            // Se desactiva el loader global y no se vuelve a activar.
             setLoading(false);
         };
 
         initializeSession();
 
-        // 2. LISTENER DE EVENTOS: Reacciona a cambios futuros.
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             (event, newSession) => {
-                // Actualiza la sesión y el usuario silenciosamente para TODOS los eventos.
                 setSession(newSession);
                 const currentUser = newSession?.user ?? null;
                 setUser(currentUser);
                 
-                // Pero SÓLO recarga el perfil para eventos importantes.
-                // Ignora TOKEN_REFRESHED para no mostrar loaders innecesarios.
                 if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
                     loadUserProfile(currentUser.id);
                 } else if (event === 'SIGNED_OUT') {
@@ -69,31 +68,33 @@ export const useSupabaseAuth = () => {
         return () => {
             subscription?.unsubscribe();
         };
-    }, [loadUserProfile]); // El efecto se ejecuta solo una vez.
+    }, [supabase, loadUserProfile]);
 
-    // El resto del hook no necesita cambios
     const signUp = useCallback(async (email, password, metadata = {}) => {
+        if (!supabase) return { success: false, error: 'Supabase client not ready' };
         const { data, error } = await supabase.auth.signUp({ email, password, options: { data: metadata } });
         if (error) toast({ variant: "destructive", title: "Error de registro", description: error.message });
         else toast({ title: "Registro exitoso", description: "Por favor, revisa tu correo para confirmar." });
         return { success: !error, data, error };
-    }, [toast]);
+    }, [supabase, toast]);
 
     const signIn = useCallback(async (email, password) => {
+        if (!supabase) return { success: false, error: 'Supabase client not ready' };
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) toast({ variant: "destructive", title: "Error de inicio de sesión", description: error.message });
         return { success: !error, data, error };
-    }, [toast]);
+    }, [supabase, toast]);
 
     const signOut = useCallback(async () => {
+        if (!supabase) return { success: false, error: 'Supabase client not ready' };
         const { error } = await supabase.auth.signOut();
         if (error) toast({ variant: "destructive", title: "Error al cerrar sesión", description: error.message });
         else toast({ title: "Has cerrado sesión" });
         return { success: !error };
-    }, [toast]);
+    }, [supabase, toast]);
     
     const updateProfile = useCallback(async (updates) => {
-        if (!user) return { success: false, error: 'No user logged in' };
+        if (!user || !supabase) return { success: false, error: 'No user or client ready' };
         try {
             const { data, error } = await supabase.from('users_profile').update(updates).eq('user_id', user.id).select().single();
             if (error) throw error;
@@ -104,7 +105,7 @@ export const useSupabaseAuth = () => {
             toast({ variant: "destructive", title: "Error al actualizar perfil", description: error.message });
             return { success: false, error };
         }
-    }, [user, toast]);
+    }, [user, supabase, toast]);
 
     return useMemo(() => ({
         user,

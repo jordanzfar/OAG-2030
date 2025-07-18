@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from 'react-router-dom';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { supabase } from '@/lib/supabase';
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { Badge } from "@/components/ui/badge";
 
 const AdminChatListPage = () => {
@@ -13,7 +13,7 @@ const AdminChatListPage = () => {
     const [chats, setChats] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-
+const supabase = useSupabaseClient();
     const loadChats = useCallback(async () => {
         if (!user) return;
         setLoading(true);

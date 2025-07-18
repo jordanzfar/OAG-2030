@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useAdminData } from '@/hooks/useAdminData';
-import { supabase } from '@/lib/supabase';
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const AdminChatInstancePage = () => {
@@ -18,7 +18,7 @@ const AdminChatInstancePage = () => {
     const { user } = useSupabaseAuth();
     const { sendAdminMessage, updateChatStatus } = useAdminData();
     const { toast } = useToast();
-
+const supabase = useSupabaseClient();
     // Estados
     const [clientProfile, setClientProfile] = useState(null);
     const [messages, setMessages] = useState([]);

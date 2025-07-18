@@ -1,9 +1,11 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 
 export const useAdminActions = () => {
+  const supabase = useSupabaseClient();
+
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { user } = useSupabaseAuth();

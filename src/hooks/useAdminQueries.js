@@ -1,11 +1,11 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { useToast } from '@/components/ui/use-toast';
 
 export const useAdminQueries = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-
+const supabase = useSupabaseClient();
   // --- FUNCIONES ORIGINALES (AHORA ESTABILIZADAS) ---
 
   const fetchAllRequests = useCallback(async () => {

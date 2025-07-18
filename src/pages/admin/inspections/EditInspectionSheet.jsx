@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { supabase } from '@/lib/supabase'; // O la ruta correcta a tu cliente de Supabase
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
+
+; // O la ruta correcta a tu cliente de Supabase
 import { useSupabaseData } from '@/hooks/useSupabaseData';
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";

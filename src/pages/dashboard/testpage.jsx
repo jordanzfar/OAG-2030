@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabase'; // Usamos el cliente de Supabase directamente
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
+
+; // Usamos el cliente de Supabase directamente
 import { Loader2 } from 'lucide-react';
 
 const TestPage = () => {

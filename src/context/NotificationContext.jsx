@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { supabase } from '@/lib/supabase';
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
 
 const NotificationContext = createContext(null);
 
 export const NotificationProvider = ({ children }) => {
+    const supabase = useSupabaseClient();
+
     const { user } = useSupabaseAuth();
     const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 

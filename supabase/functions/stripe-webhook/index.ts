@@ -1,14 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import Stripe from "https://esm.sh/stripe@11.1.0?target=deno";
+import Stripe from "https://esm.sh/stripe@15.8.0";
 
-// Inicializa Stripe con tu clave secreta. La leeremos de los "secretos" de Supabase.
 const stripe = new Stripe(Deno.env.get("STRIPE_API_KEY") as string, {
-  apiVersion: "2022-11-15",
-  httpClient: Stripe.createFetchHttpClient(),
+  apiVersion: "2024-06-20",
 });
 
-// Inicializa el cliente de Supabase con permisos de administrador.
 const supabaseAdmin = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -20,7 +17,6 @@ serve(async (req) => {
 
   let receivedEvent;
   try {
-    // Verificación de seguridad: Asegura que la solicitud venga de Stripe.
     receivedEvent = await stripe.webhooks.constructEventAsync(
       body,
       signature!,
@@ -33,12 +29,11 @@ serve(async (req) => {
 
   console.log(`Evento de Stripe recibido: ${receivedEvent.type}`);
 
-  // Escuchamos el evento que se dispara cuando un pago se completa.
+  // ===================================================================
+  // --- LÓGICA EXISTENTE PARA INSPECCIONES (SIN CAMBIOS) ---
+  // ===================================================================
   if (receivedEvent.type === "checkout.session.completed") {
     const session = receivedEvent.data.object;
-    
-    // Necesitamos una forma de saber qué inspección pagar.
-    // Asumiremos que el stock_number se pasa en los metadatos de la sesión de Stripe.
     const stockNumber = session.metadata?.stock_number;
     
     if (!stockNumber) {
@@ -47,7 +42,6 @@ serve(async (req) => {
     }
 
     try {
-      // Buscamos la inspección más reciente con ese stock_number y estado 'pending_payment'.
       const { data: inspection, error: queryError } = await supabaseAdmin
         .from("inspections")
         .select("id")
@@ -61,7 +55,6 @@ serve(async (req) => {
         throw new Error(`Inspección no encontrada para stock# ${stockNumber} con pago pendiente.`);
       }
 
-      // Actualizamos el estado de la inspección a 'pending'.
       const { error: updateError } = await supabaseAdmin
         .from("inspections")
         .update({ status: "pending" })
@@ -75,6 +68,71 @@ serve(async (req) => {
 
     } catch (error) {
       console.error(error.message);
+      return new Response(error.message, { status: 500 });
+    }
+  } 
+  // ===================================================================
+  // --- LÓGICA PARA POWER BUYING (CON DEPURACIÓN AÑADIDA) ---
+  // ===================================================================
+  else if (receivedEvent.type === "payment_intent.succeeded") {
+    const paymentIntent = receivedEvent.data.object;
+    
+    try {
+      // ================== INICIO DEL CÓDIGO DE DEPURACIÓN ==================
+      console.log("--- INICIO DEPURACIÓN ---");
+      console.log(`Buscando el Payment Intent específico: ${paymentIntent.id}`);
+      
+      const { data: allRequests, error: allError } = await supabaseAdmin
+        .from('power_buying_requests')
+        .select('*'); // Leemos TODA la tabla sin filtros
+
+      if (allError) {
+          console.error("Error al intentar leer TODOS los registros:", allError.message);
+      } else {
+          console.log(`Se encontraron ${allRequests.length} registros en total en la tabla.`);
+          console.log("Contenido de la tabla:", JSON.stringify(allRequests, null, 2));
+      }
+      console.log("--- FIN DEPURACIÓN ---");
+      // =================== FIN DEL CÓDIGO DE DEPURACIÓN ===================
+
+      const { data: request, error: findError } = await supabaseAdmin
+        .from('power_buying_requests')
+        .select('id, user_id, amount, status')
+        .eq('payment_intent_id', paymentIntent.id)
+        .single();
+
+      if (findError || !request) {
+        console.log(`(Resultado de la lógica original) PaymentIntent ${paymentIntent.id} no corresponde a una solicitud.`);
+        return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
+      }
+      
+      if (request.status === 'approved') {
+        console.log(`La solicitud para PaymentIntent ${paymentIntent.id} ya fue aprobada.`);
+        return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
+      }
+
+      const { error: updateError } = await supabaseAdmin
+        .from('power_buying_requests')
+        .update({ status: 'approved' })
+        .eq('id', request.id);
+
+      if (updateError) {
+        throw new Error(`Fallo al actualizar estado para request ID ${request.id}: ${updateError.message}`);
+      }
+
+      const { error: rpcError } = await supabaseAdmin.rpc('increment_buying_power', {
+        user_id_param: request.user_id,
+        amount_to_add: request.amount
+      });
+
+      if (rpcError) {
+        throw new Error(`Fallo al llamar RPC para user ID ${request.user_id}: ${rpcError.message}`);
+      }
+
+      console.log(`✅ Power Buying aprobado para user ${request.user_id}. Monto: ${request.amount}`);
+
+    } catch(error) {
+      console.error("Error procesando 'payment_intent.succeeded' para Power Buying:", error.message);
       return new Response(error.message, { status: 500 });
     }
   }

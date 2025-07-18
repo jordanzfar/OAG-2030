@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,7 @@ export function ViewBidSheet({ bid, isOpen, onClose, onUpdateSuccess }) {
   const [newStatus, setNewStatus] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  
+  const supabase = useSupabaseClient();
   useEffect(() => {
     if (bid) {
       setNewStatus(bid.status);

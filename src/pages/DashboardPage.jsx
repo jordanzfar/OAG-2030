@@ -7,12 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import BuyingPowerWidget from '@/components/dashboard/BuyingPowerWidget';
-import { supabase } from '@/lib/supabase';
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import VerificationBadge from '@/components/dashboard/VerificationBadge';
 
 const DashboardPage = () => {
     const { user, userRole, userProfile } = useAuth();
-    
+    const supabase = useSupabaseClient();
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
