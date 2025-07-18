@@ -8,6 +8,7 @@ import { useAdminActions } from '@/hooks/useAdminActions';
 import { useToast } from '@/components/ui/use-toast'; // ✅ Importación añadida
 
 export const useAdminData = () => {
+    const supabase = useSupabaseClient(); 
     const { user } = useSupabaseAuth();
     const queries = useAdminQueries();
     const actions = useAdminActions();

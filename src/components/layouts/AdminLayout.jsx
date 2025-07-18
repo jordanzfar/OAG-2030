@@ -24,6 +24,7 @@ const SidebarNav = () => {
         { title: "VIN Checks", href: "/admin/vin-requests", icon: SearchCheck, roles: ['admin', 'support'] },
         { title: "Pujas de Subasta", href: "/admin/auction-bids", icon: Gavel, roles: ['admin', 'finance', 'support'] },
         { title: "Legalizaciones", href: "/admin/legalizations", icon: FileCheck2, roles: ['admin', 'validation'] },
+        { title: "Compras de Poder", href: "/admin/power-buying", icon: DollarSign, roles: ['admin', 'finance'] },
        
         //{ title: "Documentos", href: "/admin/documents", icon: FileCheck2, roles: ['admin', 'validation'] },
         //{ title: "Chat", href: "/admin/chat", icon: MessageSquare, roles: ['admin', 'support'], notificationCount: unreadMessageCount },
