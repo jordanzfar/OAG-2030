@@ -1,15 +1,11 @@
-import { useState, useCallback } from 'react'; // 1. Importa useCallback
+import { useState, useCallback } from 'react';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { useToast } from '@/components/ui/use-toast';
 
 export const useSupabaseData = () => {
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
-const supabase = useSupabaseClient();
-    // ====================================================================
-    // --- INICIO DE LA CORRECCIÓN ---
-    // Envolvemos TODAS las funciones que se exportan en useCallback.
-    // ====================================================================
+    const supabase = useSupabaseClient();
 
     const createRecord = useCallback(async (table, data) => {
         setLoading(true);
@@ -23,7 +19,7 @@ const supabase = useSupabaseClient();
         } finally {
             setLoading(false);
         }
-    }, [toast]); // Dependencia estable
+    }, [supabase, toast]); // NOVA UI: Añadido supabase como dependencia
 
     const updateRecord = useCallback(async (table, id, data) => {
         setLoading(true);
@@ -37,7 +33,7 @@ const supabase = useSupabaseClient();
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [supabase, toast]); // NOVA UI: Añadido supabase como dependencia
 
     const deleteRecord = useCallback(async (table, id) => {
         setLoading(true);
@@ -51,7 +47,7 @@ const supabase = useSupabaseClient();
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [supabase, toast]); // NOVA UI: Añadido supabase como dependencia
 
     const fetchRecords = useCallback(async (table, filters = {}, options = {}) => {
         setLoading(true);
@@ -69,7 +65,7 @@ const supabase = useSupabaseClient();
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [supabase, toast]); // NOVA UI: Añadido supabase como dependencia
 
     const uploadFile = useCallback(async (bucket, path, file) => {
         setLoading(true);
@@ -83,12 +79,12 @@ const supabase = useSupabaseClient();
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [supabase, toast]); // NOVA UI: Añadido supabase como dependencia
 
     const getFileUrl = useCallback((bucket, path) => {
         const { data } = supabase.storage.from(bucket).getPublicUrl(path);
         return data.publicUrl;
-    }, []);
+    }, [supabase]); // NOVA UI: Añadido supabase como dependencia
 
     const deleteFile = useCallback(async (bucket, path) => {
         try {
@@ -99,19 +95,34 @@ const supabase = useSupabaseClient();
             toast({ variant: "destructive", title: "Error al eliminar archivo", description: error.message });
             return { success: false, error: error.message };
         }
-    }, [toast]);
+    }, [supabase, toast]); // NOVA UI: Añadido supabase como dependencia
 
-    // Las funciones específicas también deben estar envueltas para que sean estables
-    const createNotification = useCallback((...args) => createRecord('notifications', ...args), [createRecord]);
-    const markNotificationAsRead = useCallback((...args) => updateRecord('notifications', ...args), [updateRecord]);
-    const createVinCheck = useCallback((...args) => createRecord('vin_check_logs', ...args), [createRecord]);
-    const createInspection = useCallback((...args) => createRecord('inspections', ...args), [createRecord]);
-    const createLegalization = useCallback((...args) => createRecord('legalizations', ...args), [createRecord]);
-    const createDocument = useCallback((...args) => createRecord('documents', ...args), [createRecord]);
-    const createChatMessage = useCallback((...args) => createRecord('chat_messages', ...args), [createRecord]);
-    const createPowerBuyingRequest = useCallback((...args) => createRecord('power_buying_requests', ...args), [createRecord]);
-    const createDeposit = useCallback((...args) => createRecord('deposits', ...args), [createRecord]);
-
+    // --- Funciones específicas ---
+    const createNotification = useCallback((data) => createRecord('notifications', data), [createRecord]);
+    const markNotificationAsRead = useCallback((id, data) => updateRecord('notifications', id, data), [updateRecord]);
+    const createVinCheck = useCallback((data) => createRecord('vin_check_logs', data), [createRecord]);
+    const createInspection = useCallback((data) => createRecord('inspections', data), [createRecord]);
+    const createLegalization = useCallback((data) => createRecord('legalizations', data), [createRecord]);
+    const createDocument = useCallback((data) => createRecord('documents', data), [createRecord]);
+    const createChatMessage = useCallback((data) => createRecord('chat_messages', data), [createRecord]);
+    const createPowerBuyingRequest = useCallback((data) => createRecord('power_buying_requests', data), [createRecord]);
+    
+    // ====================================================================
+    // --- INICIO DE LA CORRECCIÓN ---
+    // Esta es la función que corregimos.
+    // ====================================================================
+    const createDeposit = useCallback(
+        (userId, depositData) => {
+            // 1. Combinamos el ID del usuario con el resto de los datos del depósito
+            const fullDepositData = {
+                ...depositData,
+                user_id: userId,
+            };
+            // 2. Llamamos a createRecord con el nombre de la tabla y el objeto de datos COMPLETO
+            return createRecord('deposits', fullDepositData);
+        },
+        [createRecord]
+    );
 
     return {
         loading,
@@ -130,6 +141,6 @@ const supabase = useSupabaseClient();
         createDocument,
         createChatMessage,
         createPowerBuyingRequest,
-        createDeposit
+        createDeposit // Exportamos la función corregida
     };
 };
