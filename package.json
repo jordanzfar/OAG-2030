@@ -48,6 +48,7 @@
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.60.0",
+    "react-phone-number-input": "^3.4.12",
     "react-router-dom": "^6.16.0",
     "react-signature-canvas": "^1.1.0-alpha.2",
     "tailwind-merge": "^1.14.0",

@@ -1,0 +1,103 @@
+/*
+  src/components/registration/phone-input-styles.css
+  Estilos para react-phone-number-input, adaptados a tu tema
+  "Esencia Opulenta" (Oro Bronce).
+*/
+
+/* --- Contenedor Principal --- */
+.PhoneInput {
+  display: flex;
+  align-items: center;
+  /* Utiliza el color de fondo para inputs de tu tema */
+  background-color: hsl(var(--input)); 
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* Estado de foco: Usa tu color --ring "Oro Bronce" */
+.PhoneInput:focus-within {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.4);
+}
+
+/* --- Campo de Texto --- */
+.PhoneInputInput {
+  flex: 1;
+  min-width: 0;
+  height: 2.5rem; /* 40px */
+  background-color: transparent;
+  outline: none;
+  padding-left: 0.5rem;
+  /* Utiliza el color de texto principal de tu tema */
+  color: hsl(var(--foreground)); 
+  font-size: 0.875rem;
+}
+
+.PhoneInputInput::placeholder {
+  /* Utiliza el color de texto "apagado" de tu tema */
+  color: hsl(var(--muted-foreground));
+}
+
+
+/* --- Selector de País (Bandera) --- */
+.PhoneInputCountry {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: 0.75rem;
+  margin-right: 0.5rem;
+  /* Utiliza el color de texto "apagado" para la flecha */
+  color: hsl(var(--muted-foreground));
+}
+
+.PhoneInputCountrySelect-arrow {
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+.PhoneInputCountry:hover .PhoneInputCountrySelect-arrow {
+  opacity: 1;
+}
+
+/* --- Menú Desplegable de Países --- */
+.PhoneInputCountrySelectMenu {
+  /* Utiliza los colores de popover de tu tema */
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  padding: 0.25rem;
+}
+
+/* Opción individual en la lista */
+.PhoneInputCountryOption {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem;
+  border-radius: calc(var(--radius) - 2px);
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+
+/* Estado de hover/foco en una opción */
+.PhoneInputCountryOption--isFocused,
+.PhoneInputCountryOption:hover {
+  /* Utiliza los colores de acento de tu tema */
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.PhoneInputCountryOption-name {
+    margin-left: 0.75rem;
+}
+
+/* Código de país en la lista (ej. +1, +52) */
+.PhoneInputCountryOption-dialCode {
+    margin-left: auto;
+    color: hsl(var(--muted-foreground));
+}
+
+.PhoneInputCountryOption:hover .PhoneInputCountryOption-dialCode {
+    color: hsl(var(--accent-foreground));
+}
