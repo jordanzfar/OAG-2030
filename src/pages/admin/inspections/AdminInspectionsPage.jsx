@@ -9,6 +9,7 @@ import { DataTable } from './data-table';
 import { EditInspectionSheet } from './EditInspectionSheet';
 
 const AdminInspectionsPage = () => {
+  const supabase = useSupabaseClient();
   const [inspections, setInspections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingInspection, setEditingInspection] = useState(null);

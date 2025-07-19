@@ -140,7 +140,7 @@ const RealtimeRequestsTable = ({ requests, loading, onStatusUpdate }) => {
                 className="border-b transition-colors hover:bg-muted/50"
               >
                 <TableCell className="font-medium font-mono text-xs">
-                  {request.id.slice(0, 8)}...
+                  {String(request.id).slice(0, 8)}...
                 </TableCell>
                 <TableCell>
                   <div>
