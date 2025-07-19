@@ -13,17 +13,17 @@ import logo from '@/assets/OPULENT-BRONZE.png';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
 
 const sidebarNavItems = [
-    { title: "Panel Principal", href: "/dashboard", icon: LayoutDashboard },
-    { title: "Inspecciones", href: "/dashboard/inspections", icon: FileText },
-    { title: "VIN Check", href: "/dashboard/vin-check", icon: SearchCheck },
-    { title: "Pujas", href: "/dashboard/auction", icon: HandCoins },
-    { title: "Legalizaciónes", href: "/dashboard/legalization", icon: FileBadge },
+    { title: "Inicio", href: "/dashboard", icon: LayoutDashboard },
+    { title: "Inspecciones Vehiculares", href: "/dashboard/inspections", icon: FileText },
+    { title: "Verificación VIN", href: "/dashboard/vin-check", icon: SearchCheck },
+    { title: "Subastas", href: "/dashboard/auction", icon: HandCoins },
+    { title: "Legalizaciones", href: "/dashboard/legalization", icon: FileBadge },
     { title: "Poder de Compra", href: "/dashboard/power-buying", icon: HandCoins },
-    { title: "Depósitos", href: "/dashboard/deposits", icon: Banknote },
-    { title: "Chat", href: "/dashboard/chat", icon: MessageSquare },
-    { title: "Documentos", href: "/dashboard/documents", icon: UploadCloud },
+    { title: "Gestión de Depósitos", href: "/dashboard/deposits", icon: Banknote },
+    { title: "Centro de Mensajes", href: "/dashboard/chat", icon: MessageSquare },
+    { title: "Gestión de Documentos", href: "/dashboard/documents", icon: UploadCloud },
     { title: "Notificaciones", href: "/dashboard/notifications", icon: Bell },
-    { title: "Perfil", href: "/dashboard/profile", icon: User },
+    { title: "Mi Perfil", href: "/dashboard/profile", icon: User },
     
 ];
 

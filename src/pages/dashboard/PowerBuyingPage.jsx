@@ -40,18 +40,71 @@ const PowerBuyingPage = () => {
         { amount: 50000, popular: false, title: "Profesional", description: "Para compradores serios" },
     ];
 
-    const loadPowerRequests = useCallback(async () => {
-        if (!user) {
-            setPowerRequests([]);
+     const handleCancelRequest = async (requestId) => {
+        if (!confirm('¿Estás seguro de que quieres cancelar esta solicitud? El "holding" en tu tarjeta será liberado.')) {
             return;
         }
-        const result = await fetchRecords('power_buying_requests', { user_id: user.id }, {
-            orderBy: { column: 'created_at', ascending: false }
-        });
-        if (result.success) {
-            setPowerRequests(result.data || []);
+
+        toast({ title: 'Cancelando solicitud...' });
+
+        try {
+            const { data, error } = await supabase.functions.invoke('cancel-power-buying', {
+                headers: { 'Authorization': `Bearer ${session.access_token}` },
+                body: { request_id: requestId },
+            });
+
+            if (error) throw error;
+            if (data.error) throw new Error(data.error);
+
+            toast({
+                title: 'Solicitud Cancelada',
+                description: 'La autorización en tu tarjeta ha sido liberada.',
+            });
+            
+            // Refrescar la lista para mostrar el nuevo estado 'cancelled'
+            loadPowerRequests();
+
+        } catch (error) {
+            console.error('Error al cancelar:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error al Cancelar',
+                description: error.message,
+            });
         }
-    }, [user, fetchRecords]);
+    };
+
+
+    const loadPowerRequests = useCallback(async () => {
+    if (!user) {
+        setPowerRequests([]);
+        return;
+    }
+
+    try {
+        // Esta nueva consulta filtra las solicitudes canceladas
+        const { data, error } = await supabase
+            .from('power_buying_requests')
+            .select('*')
+            .eq('user_id', user.id)
+            .neq('status', 'cancelled') // La línea que filtra
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            throw error;
+        }
+
+        setPowerRequests(data || []);
+
+    } catch (error) {
+        console.error('Error al cargar las solicitudes de Power Buying:', error.message);
+        toast({
+            variant: "destructive",
+            title: "Error al cargar el historial",
+            description: "No se pudieron obtener las solicitudes.",
+        });
+    }
+}, [user, supabase, toast]);
 
     useEffect(() => {
         const runLoad = async () => {
@@ -210,7 +263,7 @@ const PowerBuyingPage = () => {
         <div className="space-y-6">
             {clientSecret && (
               <Dialog open={showPaymentModal} onOpenChange={handleModalClose}>
-                <DialogContent>
+                <DialogContent className="max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Autorizar Depósito de Garantía</DialogTitle>
                     <DialogDescription>
@@ -377,11 +430,24 @@ const PowerBuyingPage = () => {
                                                 Solicitado: {new Date(request.created_at).toLocaleDateString()}
                                             </p>
                                         </div>
-                                        <div className="flex items-center space-x-2">
-                                            {getStatusIcon(request.status)}
-                                            <span className={`text-sm font-medium ${getStatusColor(request.status)}`}>
-                                                {getStatusText(request.status)}
-                                            </span>
+                                        <div className="flex items-center space-x-4"> {/* Aumentado space-x */}
+                                            <div className="flex items-center space-x-2">
+                                                {getStatusIcon(request.status)}
+                                                <span className={`text-sm font-medium ${getStatusColor(request.status)}`}>
+                                                    {getStatusText(request.status)}
+                                                </span>
+                                            </div>
+                                            
+                                            {/* 👇 2. AÑADE ESTE BLOQUE DE CÓDIGO 👇 */}
+                                            {request.status === 'pending_payment' && (
+                                                <Button
+                                                    variant="destructive"
+                                                    size="sm"
+                                                    onClick={() => handleCancelRequest(request.id)}
+                                                >
+                                                    Cancelar
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
