@@ -25,16 +25,16 @@ const SidebarNav = () => {
         { title: "Pujas de Subasta", href: "/admin/auction-bids", icon: Gavel, roles: ['admin', 'finance', 'support'] },
         { title: "Legalizaciones", href: "/admin/legalizations", icon: FileCheck2, roles: ['admin', 'validation'] },
         { title: "Compras de Poder", href: "/admin/power-buying", icon: DollarSign, roles: ['admin', 'finance'] },
-       
+        { title: "KYC", href: "/admin/users", icon: Users, roles: ['admin'] },
+
         { title: "Documentos", href: "/admin/documents", icon: FileCheck2, roles: ['admin', 'validation'] },
        // { title: "Chat", href: "/admin/chat", icon: MessageSquare, roles: ['admin', 'support'], notificationCount: unreadMessageCount },
         { title: "Pagos", href: "/admin/payments", icon: Banknote, roles: ['admin', 'finance'] },
        // { title: "Finanzas", href: "/admin/finance", icon: DollarSign, roles: ['admin', 'finance'] },
         //{ title: "Verificaciones", href: "/admin/verification", icon: Shield, roles: ['admin', 'validation'] },
         { title: "Notificaciones", href: "/admin/notifications", icon: Bell, roles: ['admin', 'support', 'validation', 'finance'] },
-        { title: "Usuarios", href: "/admin/users", icon: Users, roles: ['admin'] },
        // { title: "Estadísticas", href: "/admin/stats", icon: BarChart2, roles: ['admin'] },
-        { title: "Configuración", href: "/admin/settings", icon: Settings, roles: ['admin'] },
+        //{ title: "Configuración", href: "/admin/settings", icon: Settings, roles: ['admin'] },
     ];
 
     const accessibleNavItems = userRole ? adminSidebarNavItems.filter(item => item.roles.includes(userRole)) : [];
