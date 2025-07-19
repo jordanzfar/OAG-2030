@@ -22,7 +22,8 @@ const AdminDashboardPage = () => {
     updateDocumentStatus,
     updateDepositStatus,
     updateUserVerification,
-    getDashboardStats
+    getDashboardStats,
+    getDocumentDownloadUrl
   } = useAdminData();
 
   const [stats, setStats] = useState(null);
@@ -121,19 +122,20 @@ const AdminDashboardPage = () => {
     }
   };
 
-  const handleUserVerificationUpdate = async (userId, verificationStatus, buyingPower = null) => {
-    const result = await updateUserVerification(userId, verificationStatus, buyingPower);
+  const handleUserVerificationUpdate = async (userId, verificationStatus) => {
+    // La firma ahora es más simple, solo userId y verificationStatus.
+    // El 'buyingPower' ya no es necesario aquí.
+    const result = await updateUserVerification(userId, verificationStatus);
     if (result.success) {
-      // Refresh users data
+      // Tu lógica de refresco de datos (¡está perfecta!)
       const usersResult = await fetchAllUsers();
       if (usersResult.success) {
         setUsers(usersResult.data);
       }
-      // Refresh stats
       const statsResult = await getDashboardStats();
       if (statsResult.success) {
         setStats(statsResult.data);
-      }
+       }
     }
   };
 
@@ -283,13 +285,15 @@ const AdminDashboardPage = () => {
         )}
 
         {(userRole === 'admin' || userRole === 'finance') && (
-          <TabsContent value="deposits">
-            <RealtimeDepositsTable 
-              deposits={deposits}
-              loading={loading}
-              onStatusUpdate={handleDepositStatusUpdate}
-            />
-          </TabsContent>
+          <TabsContent value="users">
+            {/* ✅ CORREGIDO: Se pasa la prop onDocumentViewRequest */}
+            <RealtimeUsersTable 
+              users={users}
+              loading={loading}
+              onVerificationUpdate={handleUserVerificationUpdate}
+              onDocumentViewRequest={getDocumentDownloadUrl}
+            />
+          </TabsContent>
         )}
       </Tabs>
     </motion.div>

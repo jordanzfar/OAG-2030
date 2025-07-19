@@ -92,7 +92,7 @@ const DocumentsPage = () => {
 
       // Upload file to Supabase Storage
       const filePath = `${user.id}/documents/${Date.now()}_${file.name}`;
-      const uploadResult = await uploadFile('documents', filePath, file);
+      const uploadResult = await uploadFile('kyc-documents', filePath, file);
 
       if (uploadResult.success) {
         // Create document record in database

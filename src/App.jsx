@@ -49,6 +49,7 @@ import AdminPowerBuyingPage from '@/components/admin/AdminPowerBuyingPage';
 
 // ✅ INICIO DE CAMBIOS
 import AdminVinRequestsPage from './pages/admin/AdminVinRequestsPage';
+import VerificationPage from './pages/dashboard/VerificationPage';
 // ✅ FIN DE CAMBIOS
 
 // --- Componente para Proteger Rutas ---
@@ -125,6 +126,7 @@ function App() {
                                     <Route path="chat" element={<ChatPage />} />
                                     <Route path="notifications" element={<NotificationsPage />} />
                                     <Route path="auction" element={<AuctionPage />} />
+                                    <Route path="verification" element={<VerificationPage />} />
                                 </Route>
 
                                 {/* Rutas de Admin */}

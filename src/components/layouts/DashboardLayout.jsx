@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,11 +21,12 @@ const sidebarNavItems = [
     { title: "Legalizaciones", href: "/dashboard/legalization", icon: FileBadge },
     { title: "Poder de Compra", href: "/dashboard/power-buying", icon: HandCoins },
     { title: "Gestión de Depósitos", href: "/dashboard/deposits", icon: Banknote },
+    { title: "Verificación de Usuario", href: "/dashboard/verification", icon: User },
     { title: "Centro de Mensajes", href: "/dashboard/chat", icon: MessageSquare },
-    { title: "Gestión de Documentos", href: "/dashboard/documents", icon: UploadCloud },
+   // title: "Gestión de Documentos", href: "/dashboard/documents", icon: UploadCloud },
     { title: "Notificaciones", href: "/dashboard/notifications", icon: Bell },
     { title: "Mi Perfil", href: "/dashboard/profile", icon: User },
-    
+
 ];
 
 const DashboardLayout = () => {
