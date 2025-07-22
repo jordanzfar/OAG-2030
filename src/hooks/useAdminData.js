@@ -233,27 +233,40 @@ export const useAdminData = () => {
     }, [supabase, user]);
 
     const updateChatStatus = useCallback(async (clientId, newStatus) => {
-        if (!user) return { error: { message: 'Usuario no autenticado.' } };
-        
-        try {
-            const { data, error } = await supabase
-                .from('chat_conversations')
-                .update({ status: newStatus })
-                .eq('client_id', clientId)
-                .select()
-                .single();
+    if (!user) return { error: { message: 'Usuario no autenticado.' } };
+    
+    try {
+        const updateData = { status: newStatus };
 
-            if (error) throw error;
-            
-            toast({ title: "✅ Estado actualizado", description: `La conversación ahora está "${newStatus}".` });
-            return { data, error: null };
-
-        } catch (error) {
-            console.error('Error en updateChatStatus:', error);
-            toast({ variant: "destructive", title: "❌ Error al actualizar estado", description: error.message });
-            return { data: null, error };
+        // Si el nuevo estado es 'solucionado', registramos quién y cuándo.
+        if (newStatus === 'solucionado') {
+            updateData.closed_at = new Date().toISOString();
+            updateData.closed_by = user.id;
+        } 
+        // Si se reabre, limpiamos los datos de cierre.
+        else {
+            updateData.closed_at = null;
+            updateData.closed_by = null;
         }
-    }, [supabase, user, toast]);
+
+        const { data, error } = await supabase
+            .from('chat_conversations')
+            .update(updateData)
+            .eq('client_id', clientId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        
+        toast({ title: "✅ Estado actualizado", description: `La conversación ahora está "${newStatus}".` });
+        return { data, error: null };
+
+    } catch (error) {
+        console.error('Error en updateChatStatus:', error);
+        toast({ variant: "destructive", title: "❌ Error al actualizar estado", description: error.message });
+        return { data: null, error };
+    }
+}, [supabase, user, toast]);
 
     // --- ✅ FIN: FUNCIONES DE CHAT ---
 
