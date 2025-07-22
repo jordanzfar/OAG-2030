@@ -45,7 +45,7 @@ export const useAdminVinRequests = () => {
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${id}.${fileExt}`;
-      const filePath = `public/${fileName}`;
+      const filePath = `reports/${fileName}`;
 
       // 1. Subir el archivo
       const { error: uploadError } = await supabase.storage

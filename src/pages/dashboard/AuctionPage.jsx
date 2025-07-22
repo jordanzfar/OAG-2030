@@ -146,6 +146,7 @@ const ProgressBar = ({ currentStep }) => {
 
 // --- COMPONENTE PRINCIPAL DE LA PÁGINA ---
 export default function AuctionPage() {
+    const supabase = useSupabaseClient();
     const [currentStep, setCurrentStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [calculatedFees, setCalculatedFees] = useState(defaultFees);

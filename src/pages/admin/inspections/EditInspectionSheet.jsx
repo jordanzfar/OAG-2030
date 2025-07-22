@@ -13,8 +13,9 @@ import { Loader2 } from "lucide-react";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
+
 export function EditInspectionSheet({ inspection, isOpen, onClose, onUpdateSuccess }) {
-  // El hook 'updateRecord' viene de tu hook personalizado useSupabaseData
+  const supabase = useSupabaseClient(); 
   const { updateRecord } = useSupabaseData();
   const { toast } = useToast();
   

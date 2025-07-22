@@ -78,6 +78,7 @@ const loadInspections = useCallback(async () => {
             <DataTable 
               columns={columns({ onEdit: handleEdit })} 
               data={inspections} 
+              filterColumn="stock_number" 
             />
           )}
         </CardContent>
