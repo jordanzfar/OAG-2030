@@ -99,12 +99,11 @@ export const useAdminData = () => {
     const fetchAllLegalizations = useCallback(async (filters) => {
         setLoading(true);
         try {
-            // Nota: Asegúrate que tu función RPC se llama 'get_all_legalizations_with_filters' y acepta estos parámetros.
-               const { data, error } = await supabase.rpc('get_all_legalizations', {
-            p_status: filters?.status,
-            p_start_date: filters?.startDate,
-            p_end_date: filters?.endDate,
-        });
+             const { data, error } = await supabase.rpc('get_all_legalizations', {
+                p_status: filters?.status,
+                p_start_date: filters?.startDate,
+                p_end_date: filters?.endDate,
+            });
             if (error) throw error;
             return { success: true, data, error: null };
         } catch (error) {
@@ -133,7 +132,7 @@ export const useAdminData = () => {
 
     const getDocumentDownloadUrl = useCallback(async (filePath, bucketName = 'kycdocuments') => {
         try {
-            const { data, error } = await supabase.storage.from(bucketName).createSignedUrl(filePath, 60 * 5); // 5 min de validez
+            const { data, error } = await supabase.storage.from(bucketName).createSignedUrl(filePath, 60 * 5);
             if (error) throw error;
             return { success: true, url: data.signedUrl };
         } catch(error) {
@@ -145,7 +144,6 @@ export const useAdminData = () => {
     // --- Funciones Generales y de Dashboard ---
 
     const getDashboardStats = useCallback(async () => {
-        // Implementación completa del primer archivo
         try {
             const [
                 inspectionsResult, legalizationsResult, powerBuyingResult, vinCheckResult,
@@ -186,23 +184,78 @@ export const useAdminData = () => {
         }
     }, [supabase]);
 
-    const sendAdminMessage = useCallback(async (clientId, content) => {
-        if (!user || !clientId || !content) return { success: false, error: new Error("Datos insuficientes.") };
+    // --- ✅ INICIO: FUNCIONES DE CHAT CORREGIDAS Y AÑADIDAS ---
+
+    const sendAdminMessage = useCallback(async (clientId, content, file = null) => {
+        if (!user) return { data: null, error: { message: "Usuario no autenticado." } };
+        
+        let filePath = null;
+        let fileType = null;
+
         try {
-            const { data, error } = await supabase.from('chat_messages').insert({
+            if (file) {
+                const uniquePath = `${user.id}/${Date.now()}_${file.name}`;
+                const { error: uploadError } = await supabase.storage
+                    .from('chatdocuments')
+                    .upload(uniquePath, file);
+
+                if (uploadError) throw uploadError;
+                filePath = uniquePath;
+                fileType = file.type;
+            }
+
+            if (!content && !file) {
+                 return { data: null, error: { message: "No se puede enviar un mensaje vacío." } };
+            }
+
+            const messageToInsert = {
                 sender_id: user.id,
                 receiver_id: clientId,
-                content: content,
-            }).select().single();
+                content: content || null,
+                file_path: filePath,
+                file_type: fileType,
+                is_read: false,
+            };
+
+            const { data, error } = await supabase
+                .from('chat_messages')
+                .insert(messageToInsert)
+                .select()
+                .single();
+
             if (error) throw error;
-            return { success: true, data };
+            return { data, error: null };
+
         } catch (error) {
             console.error("Error al enviar mensaje de admin:", error);
-            return { success: false, error };
+            return { data: null, error };
         }
     }, [supabase, user]);
-    
-    // ... aquí irían otras funciones si las tuvieras (fetchUsersByRole, updateChatStatus, etc.)
+
+    const updateChatStatus = useCallback(async (clientId, newStatus) => {
+        if (!user) return { error: { message: 'Usuario no autenticado.' } };
+        
+        try {
+            const { data, error } = await supabase
+                .from('chat_conversations')
+                .update({ status: newStatus })
+                .eq('client_id', clientId)
+                .select()
+                .single();
+
+            if (error) throw error;
+            
+            toast({ title: "✅ Estado actualizado", description: `La conversación ahora está "${newStatus}".` });
+            return { data, error: null };
+
+        } catch (error) {
+            console.error('Error en updateChatStatus:', error);
+            toast({ variant: "destructive", title: "❌ Error al actualizar estado", description: error.message });
+            return { data: null, error };
+        }
+    }, [supabase, user, toast]);
+
+    // --- ✅ FIN: FUNCIONES DE CHAT ---
 
 
     // --- EXPORTACIONES DEL HOOK UNIFICADO ---
@@ -220,6 +273,8 @@ export const useAdminData = () => {
         // Dashboard & Comms
         getDashboardStats,
         createNotification,
+        // Chat
         sendAdminMessage,
+        updateChatStatus, // <-- Se añade la nueva función
     };
 };
