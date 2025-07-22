@@ -56,32 +56,46 @@ const inspectionSchema = z.object({
 }).and(locationSchema);
 
 // Subcomponente para el historial de inspecciones (VERSIÓN FINAL CORREGIDA)
-const InspectionHistory = ({ inspections, loading }) => {
+// Subcomponente para el historial de inspecciones (VERSIÓN CORREGIDA)
+const InspectionHistory = ({ inspections, loading, supabase }) => {
   const [isDownloading, setIsDownloading] = useState(null);
+  const { toast } = useToast();
 
   const handleDownload = async (filePath) => {
-    if (!filePath) return;
+    if (!filePath || !supabase) {
+        toast({
+            variant: "destructive",
+            title: "Error de configuración",
+            description: "No se pudo contactar el servicio de almacenamiento.",
+        });
+        return;
+    }
 
-    // ‼️ REEMPLAZA ESTO con el nombre exacto de tu bucket en Supabase
     const bucketName = 'inspection-reports'; 
-
     setIsDownloading(filePath);
 
     try {
       const { data, error } = await supabase
         .storage
         .from(bucketName)
-        .createSignedUrl(filePath, 60, {
-          download: true,
+        .createSignedUrl(filePath, 60, { // 60 segundos de validez para la URL
+          download: true, // Esto fuerza la descarga en lugar de abrir en el navegador
         });
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
+      // Abrir la URL firmada en una nueva pestaña para iniciar la descarga
       window.open(data.signedUrl, '_blank');
 
     } catch (error) {
       console.error('Error al generar la URL de descarga:', error);
-      alert('No se pudo generar el enlace de descarga. Por favor, inténtalo de nuevo.');
+      toast({
+        variant: "destructive",
+        title: "Error en la descarga",
+        description: "No se pudo generar el enlace. Revisa que el archivo exista y los permisos del bucket.",
+      });
     } finally {
       setIsDownloading(null);
     }
@@ -125,12 +139,13 @@ const InspectionHistory = ({ inspections, loading }) => {
   return (
     <div className="space-y-4">
       {inspections.map((inspection) => (
-        <div key={inspection.id} className="p-4 border rounded-lg bg-background hover:bg-muted/20 transition-colors">
+        <div key={inspection.id} className="p-4 border rounded-lg bg-background hover:bg-muted/40 transition-colors">
           <div className="flex justify-between items-start gap-4 flex-wrap">
             <div>
               <h4 className="font-semibold text-lg">Stock# {inspection.stock_number}</h4>
               <p className="text-sm text-muted-foreground">
-                Inspección: {format(new Date(inspection.inspection_date.replace(/-/g, '/')), "PPP", { locale: es })}
+                {/* Se asume que inspection_date es una fecha válida */}
+                Solicitada: {format(new Date(inspection.created_at), "PPP", { locale: es })}
               </p>
             </div>
             <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getStatusBadge(inspection.status)}`}>
@@ -156,12 +171,12 @@ const InspectionHistory = ({ inspections, loading }) => {
             </div>
           )}
 
-          {inspection.status === 'pending_payment' && (
-            <div className="mt-4 pt-4 border-t">
-                 <Button className="w-full sm:w-auto" onClick={() => window.open(`https://buy.stripe.com/test_8x2eV69LA9v55yo366ebu00?stock=${inspection.stock_number}`, '_blank')}>
-                    Proceder al Pago
-                </Button>
-           </div>
+          {inspection.status === 'pending_payment' && inspection.payment_link && (
+             <div className="mt-4 pt-4 border-t">
+               <Button className="w-full sm:w-auto" onClick={() => window.open(inspection.payment_link, '_blank')}>
+                  Proceder al Pago
+               </Button>
+            </div>
           )}
         </div>
       ))}
@@ -171,6 +186,7 @@ const InspectionHistory = ({ inspections, loading }) => {
 
 // Componente principal de la página
 const InspectionsPage = () => {
+  const supabase = useSupabaseClient();
   const { toast } = useToast();
   const { user } = useAuth();
   const { createRecord, fetchRecords } = useSupabaseData();
@@ -444,7 +460,7 @@ const InspectionsPage = () => {
                 <CardDescription>Revisa el estado de tus inspecciones anteriores.</CardDescription>
             </CardHeader>
             <CardContent>
-                <InspectionHistory inspections={inspections} loading={isLoadingHistory} />
+                <InspectionHistory inspections={inspections} loading={isLoadingHistory} supabase={supabase} />
             </CardContent>
         </Card>
       </div>
