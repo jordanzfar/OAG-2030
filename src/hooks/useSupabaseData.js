@@ -14,12 +14,13 @@ export const useSupabaseData = () => {
             if (error) throw error;
             return { success: true, data: result };
         } catch (error) {
+            console.error(`Error creating record in ${table}:`, error); // Log para más detalles
             toast({ variant: "destructive", title: "Error al crear registro", description: error.message });
             return { success: false, error: error.message };
         } finally {
             setLoading(false);
         }
-    }, [supabase, toast]); // NOVA UI: Añadido supabase como dependencia
+    }, [supabase, toast]);
 
     const updateRecord = useCallback(async (table, id, data) => {
         setLoading(true);
@@ -33,7 +34,7 @@ export const useSupabaseData = () => {
         } finally {
             setLoading(false);
         }
-    }, [supabase, toast]); // NOVA UI: Añadido supabase como dependencia
+    }, [supabase, toast]);
 
     const deleteRecord = useCallback(async (table, id) => {
         setLoading(true);
@@ -47,7 +48,7 @@ export const useSupabaseData = () => {
         } finally {
             setLoading(false);
         }
-    }, [supabase, toast]); // NOVA UI: Añadido supabase como dependencia
+    }, [supabase, toast]);
 
     const fetchRecords = useCallback(async (table, filters = {}, options = {}) => {
         setLoading(true);
@@ -65,7 +66,7 @@ export const useSupabaseData = () => {
         } finally {
             setLoading(false);
         }
-    }, [supabase, toast]); // NOVA UI: Añadido supabase como dependencia
+    }, [supabase, toast]);
 
     const uploadFile = useCallback(async (bucket, path, file) => {
         setLoading(true);
@@ -79,12 +80,12 @@ export const useSupabaseData = () => {
         } finally {
             setLoading(false);
         }
-    }, [supabase, toast]); // NOVA UI: Añadido supabase como dependencia
+    }, [supabase, toast]);
 
     const getFileUrl = useCallback((bucket, path) => {
         const { data } = supabase.storage.from(bucket).getPublicUrl(path);
         return data.publicUrl;
-    }, [supabase]); // NOVA UI: Añadido supabase como dependencia
+    }, [supabase]);
 
     const deleteFile = useCallback(async (bucket, path) => {
         try {
@@ -95,30 +96,51 @@ export const useSupabaseData = () => {
             toast({ variant: "destructive", title: "Error al eliminar archivo", description: error.message });
             return { success: false, error: error.message };
         }
-    }, [supabase, toast]); // NOVA UI: Añadido supabase como dependencia
+    }, [supabase, toast]);
 
     // --- Funciones específicas ---
     const createNotification = useCallback((data) => createRecord('notifications', data), [createRecord]);
     const markNotificationAsRead = useCallback((id, data) => updateRecord('notifications', id, data), [updateRecord]);
     const createVinCheck = useCallback((data) => createRecord('vin_check_logs', data), [createRecord]);
     const createInspection = useCallback((data) => createRecord('inspections', data), [createRecord]);
-    const createLegalization = useCallback((data) => createRecord('legalizations', data), [createRecord]);
-    const createDocument = useCallback((data) => createRecord('documents', data), [createRecord]);
     const createChatMessage = useCallback((data) => createRecord('chat_messages', data), [createRecord]);
     const createPowerBuyingRequest = useCallback((data) => createRecord('power_buying_requests', data), [createRecord]);
     
     // ====================================================================
     // --- INICIO DE LA CORRECCIÓN ---
-    // Esta es la función que corregimos.
     // ====================================================================
+
+    // CORREGIDO: Acepta userId y legalizationData, los combina y luego llama a createRecord.
+    const createLegalization = useCallback(
+        (userId, legalizationData) => {
+            const dataToInsert = {
+                ...legalizationData,
+                user_id: userId, // Se añade el user_id al objeto a insertar
+            };
+            return createRecord('legalizations', dataToInsert);
+        },
+        [createRecord]
+    );
+
+    // CORREGIDO: Acepta userId y documentData, los combina y luego llama a createRecord.
+    const createDocument = useCallback(
+        (userId, documentData) => {
+            const dataToInsert = {
+                ...documentData,
+                user_id: userId, // Se añade el user_id al objeto a insertar
+            };
+            return createRecord('documents', dataToInsert);
+        },
+        [createRecord]
+    );
+    
+    // Esta función ya tenía el patrón correcto, se deja como referencia.
     const createDeposit = useCallback(
         (userId, depositData) => {
-            // 1. Combinamos el ID del usuario con el resto de los datos del depósito
             const fullDepositData = {
                 ...depositData,
                 user_id: userId,
             };
-            // 2. Llamamos a createRecord con el nombre de la tabla y el objeto de datos COMPLETO
             return createRecord('deposits', fullDepositData);
         },
         [createRecord]
@@ -137,10 +159,10 @@ export const useSupabaseData = () => {
         markNotificationAsRead,
         createVinCheck,
         createInspection,
-        createLegalization,
-        createDocument,
+        createLegalization, // Exporta la función corregida
+        createDocument,     // Exporta la función corregida
         createChatMessage,
         createPowerBuyingRequest,
-        createDeposit // Exportamos la función corregida
+        createDeposit
     };
 };

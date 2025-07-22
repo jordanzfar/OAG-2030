@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
@@ -9,8 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useSupabaseData } from '@/hooks/useSupabaseData';
 import { requiredDocuments } from '@/components/legalization/constants';
-import { sanitizeFileName } from '@/utils/fileUtils'; // 👈 1. Importa la función
-
+import { sanitizeFileName } from '@/utils/fileUtils';
 
 const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploaded }) => {
   const { toast } = useToast();
@@ -20,6 +18,15 @@ const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploade
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingDocuments, setExistingDocuments] = useState([]);
   const [loadingDocuments, setLoadingDocuments] = useState(true);
+
+  // Inicializar uploadedFiles como objeto con todas las claves necesarias
+  useEffect(() => {
+    const initialFiles = {};
+    requiredDocuments.forEach(doc => {
+      initialFiles[doc.id] = null;
+    });
+    setUploadedFiles(initialFiles);
+  }, []);
 
   useEffect(() => {
     if (legalization && user) {
@@ -31,28 +38,35 @@ const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploade
     if (!user || !legalization) return;
 
     setLoadingDocuments(true);
-    const result = await fetchRecords('documents', { 
-      user_id: user.id, 
-      legalization_id: legalization.id 
-    });
+    try {
+      const result = await fetchRecords('documents', { 
+        user_id: user.id, 
+        legalization_id: legalization.id 
+      });
 
-    if (result.success) {
-      setExistingDocuments(result.data || []);
+      if (result.success) {
+        setExistingDocuments(result.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading documents:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudieron cargar los documentos existentes",
+      });
+    } finally {
+      setLoadingDocuments(false);
     }
-    setLoadingDocuments(false);
   };
 
   const getDocumentStatus = (documentKey) => {
     const existing = existingDocuments.find(doc => doc.document_type === documentKey);
-    if (existing) {
-      return {
-        exists: true,
-        fileName: existing.file_name,
-        status: existing.status,
-        uploadedAt: existing.created_at
-      };
-    }
-    return { exists: false };
+    return existing ? {
+      exists: true,
+      fileName: existing.file_name,
+      status: existing.status,
+      uploadedAt: existing.created_at
+    } : { exists: false };
   };
 
   const getStatusColor = (status) => {
@@ -74,10 +88,14 @@ const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploade
   };
 
   const handleFileChange = (fieldName, e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
-      setUploadedFiles(prev => ({ ...prev, [fieldName]: file }));
-      // Update the label
+      setUploadedFiles(prev => ({ 
+        ...prev, 
+        [fieldName]: file 
+      }));
+      
+      // Actualizar el label
       const label = document.getElementById(`modal-${fieldName}-label`);
       if (label) {
         label.textContent = file.name;
@@ -89,7 +107,11 @@ const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploade
     e.preventDefault();
     if (!user || !legalization) return;
 
-    if (Object.keys(uploadedFiles).length === 0) {
+    // Verificar que hay archivos para subir
+    const filesToUpload = Object.entries(uploadedFiles)
+      .filter(([_, file]) => file !== null);
+    
+    if (filesToUpload.length === 0) {
       toast({
         variant: "destructive",
         title: "Sin documentos",
@@ -101,54 +123,82 @@ const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploade
     setIsSubmitting(true);
 
     try {
-      const uploadPromises = Object.entries(uploadedFiles).map(async ([key, file]) => {
-        const cleanFileName = sanitizeFileName(file.name); 
-        const filePath = `${user.id}/legalizations/${legalization.id}/${key}_${cleanFileName}`;
-        const uploadResult = await uploadFile('documents', filePath, file);
-        
-        if (uploadResult.success) {
-              return createDocument({
-        user_id: user.id,
-        legalization_id: legalization.id,
-        document_type: key,
-        file_name: cleanFileName,
-        file_path: filePath,
-        file_size: file.size,
-        mime_type: file.type,
-        status: 'pending'
-    });
-}
+      const uploadResults = await Promise.all(
+        filesToUpload.map(async ([key, file]) => {
+          try {
+            const cleanFileName = sanitizeFileName(file.name); 
+            const filePath = `${user.id}/legalizations/${legalization.id}/${key}_${Date.now()}_${cleanFileName}`;
+            
+            // Subir el archivo
+            const uploadResult = await uploadFile('documents', filePath, file);
+            if (!uploadResult.success) throw uploadResult.error;
+            
+            // Crear registro del documento
+            const docResult = await createDocument({
+              user_id: user.id,
+              legalization_id: legalization.id,
+              document_type: key,
+              file_name: cleanFileName,
+              file_path: filePath,
+              file_size: file.size,
+              mime_type: file.type,
+              status: 'pending'
+            });
 
-        return null;
-      });
+            if (!docResult.success) throw docResult.error;
+            
+            return { success: true, key };
+          } catch (error) {
+            console.error(`Error uploading ${key}:`, error);
+            return { success: false, key, error };
+          }
+        })
+      );
 
-      const results = await Promise.all(uploadPromises);
-      const successCount = results.filter(result => result && result.success).length;
-
-      if (successCount > 0) {
+      const successfulUploads = uploadResults.filter(r => r.success);
+      
+      if (successfulUploads.length > 0) {
         toast({
           title: "Documentos Subidos",
-          description: `Se han subido ${successCount} documento(s) exitosamente.`,
+          description: `Se han subido ${successfulUploads.length} documento(s) exitosamente.`,
         });
         
-        setUploadedFiles({});
-        await loadExistingDocuments(); // Reload documents
+        // Limpiar solo los archivos subidos exitosamente
+        setUploadedFiles(prev => {
+          const newFiles = { ...prev };
+          successfulUploads.forEach(({ key }) => {
+            newFiles[key] = null;
+          });
+          return newFiles;
+        });
+
+        await loadExistingDocuments();
         onDocumentsUploaded();
-        onClose();
       }
+
+      // Mostrar errores individuales si hubo fallos
+      const failedUploads = uploadResults.filter(r => !r.success);
+      if (failedUploads.length > 0) {
+        toast({
+          variant: "destructive",
+          title: "Error en algunos documentos",
+          description: `${failedUploads.length} documento(s) no se pudieron subir.`,
+        });
+      }
+
     } catch (error) {
-      console.error('Error uploading documents:', error);
+      console.error('Error in document upload:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudieron subir algunos documentos. Inténtalo de nuevo.",
+        description: "Ocurrió un error al procesar los documentos.",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const DocumentUploadField = ({ id, label, description, required = false }) => {
+  const DocumentUploadField = React.memo(({ id, label, description, required = false }) => {
     const docStatus = getDocumentStatus(id);
     
     return (
@@ -162,7 +212,6 @@ const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploade
           )}
         </Label>
         
-        {/* Show existing document status */}
         {docStatus.exists && (
           <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border text-sm">
             <div className="flex items-center justify-between">
@@ -211,11 +260,11 @@ const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploade
         )}
       </div>
     );
-  };
+  });
 
   if (!legalization) return null;
 
-  // Calculate document statistics
+  // Calcular estadísticas de documentos
   const totalDocuments = requiredDocuments.length;
   const uploadedCount = existingDocuments.length;
   const approvedCount = existingDocuments.filter(doc => doc.status === 'approved').length;
@@ -367,7 +416,7 @@ const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploade
             <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || loadingDocuments}>
               {isSubmitting ? 'Subiendo...' : 'Subir Documentos'}
             </Button>
           </div>
