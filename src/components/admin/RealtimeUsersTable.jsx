@@ -121,7 +121,7 @@ const RealtimeUsersTable = ({ users, loading, onVerificationUpdate, onDocumentVi
 
     const filteredUsers = users.filter(user => {
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
-        const matchesSearch = searchTerm === '' || user.full_name?.toLowerCase().includes(lowerCaseSearchTerm) || user.email?.toLowerCase().includes(lowerCaseSearchTerm);
+        const matchesSearch = searchTerm === '' || user.full_name?.toLowerCase().includes(lowerCaseSearchTerm) || user.email?.toLowerCase().includes(lowerCaseSearchTerm) || user.short_id?.toLowerCase().includes(lowerCaseSearchTerm);
         const matchesStatus = statusFilter === 'all' || user.verification_status === statusFilter;
         return matchesSearch && matchesStatus;
     });
@@ -202,7 +202,7 @@ const RealtimeUsersTable = ({ users, loading, onVerificationUpdate, onDocumentVi
                         <TableBody>
                             {filteredUsers.length > 0 ? filteredUsers.map((user) => (
                                 <motion.tr key={user.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="border-b">
-                                    <TableCell><div className="font-medium">{user.full_name || 'Sin nombre'}</div><div className="text-sm text-muted-foreground">{user.email || 'Sin email'}</div></TableCell>
+                                    <TableCell><div className="font-medium">{user.full_name || 'Sin nombre'}</div><div className="text-sm text-muted-foreground">{user.email || 'Sin email'}</div><div className="text-sm text-muted-foreground">{user.short_id || 'Sin ID'}</div></TableCell>
                                     <TableCell>{getRoleBadge(user.role)}</TableCell>
                                     <TableCell>{getStatusBadge(user.verification_status)}</TableCell>
                                     <TableCell className="text-sm text-muted-foreground">{new Date(user.created_at).toLocaleDateString('es-ES')}</TableCell>
