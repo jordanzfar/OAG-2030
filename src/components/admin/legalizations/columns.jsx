@@ -3,7 +3,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-// ✅ CORRECTION: Se añade 'AlertTriangle' a la lista de importaciones.
 import { MoreHorizontal, AlertTriangle } from "lucide-react";
 
 const getStatusBadgeVariant = (status) => {
@@ -22,7 +21,7 @@ const getStatusBadgeVariant = (status) => {
 
 export const columns = [
   {
-    accessorKey: "user_email",
+     accessorKey: "short_id",
     header: "Usuario",
   },
   {

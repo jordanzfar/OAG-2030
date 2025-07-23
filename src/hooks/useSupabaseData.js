@@ -124,15 +124,12 @@ export const useSupabaseData = () => {
 
     // CORREGIDO: Acepta userId y documentData, los combina y luego llama a createRecord.
     const createDocument = useCallback(
-        (userId, documentData) => {
-            const dataToInsert = {
-                ...documentData,
-                user_id: userId, // Se añade el user_id al objeto a insertar
-            };
-            return createRecord('documents', dataToInsert);
-        },
-        [createRecord]
-    );
+    (documentData) => {
+        // ✅ CORRECTO: Pasa el objeto de datos directamente, sin anidarlo.
+        return createRecord('documents', documentData);
+    },
+    [createRecord]
+);
     
     // Esta función ya tenía el patrón correcto, se deja como referencia.
     const createDeposit = useCallback(
