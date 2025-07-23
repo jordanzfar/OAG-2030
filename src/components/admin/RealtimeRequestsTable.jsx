@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,10 +22,8 @@ const RealtimeRequestsTable = ({ requests, loading, onStatusUpdate }) => {
       rejected: { icon: XCircle, color: 'text-red-900', bg: 'bg-red-300', label: 'Rechazado' },
       cancelled: { icon: XCircle, color: 'text-gray-900', bg: 'bg-gray-300', label: 'Cancelado' }
     };
-
     const config = statusConfig[status] || { icon: AlertTriangle, color: 'text-gray-900', bg: 'bg-gray-300', label: status };
     const Icon = config.icon;
-
     return (
       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.color}`}>
         <Icon className="w-3 h-3 mr-1" />
@@ -35,49 +32,27 @@ const RealtimeRequestsTable = ({ requests, loading, onStatusUpdate }) => {
     );
   };
 
-  const getTypeLabel = (type) => {
-    const typeLabels = {
-      inspection: 'Inspección',
-      legalization: 'Legalización',
-      power_buying: 'Power Buying',
-      vin_check: 'VIN Check'
-    };
-    return typeLabels[type] || type;
+  const filteredRequests = useMemo(() => {
+    return requests.filter(request => {
+      // CORRECCIÓN: Apuntar a request.user para la búsqueda
+      const user = request.user || {};
+      const matchesSearch = searchTerm === '' ||
+        user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        request.id?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
+      // CORRECCIÓN: Usar type_key para el filtro de tipo
+      const matchesType = typeFilter === 'all' || request.type_key === typeFilter;
+      
+      return matchesSearch && matchesStatus && matchesType;
+    });
+  }, [requests, searchTerm, statusFilter, typeFilter]);
+
+  const handleStatusChange = (requestId, typeKey, newStatus) => {
+    // CORRECCIÓN: Asegurarse de que typeKey se pasa a la función onStatusUpdate
+    onStatusUpdate(requestId, typeKey, newStatus);
   };
-
-  const filteredRequests = requests.filter(request => {
-    const matchesSearch = searchTerm === '' ||
-      request.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.client_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.id?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
-    const matchesType = typeFilter === 'all' || request.type === typeFilter;
-    
-    return matchesSearch && matchesStatus && matchesType;
-  });
-
-  const handleStatusChange = (requestId, type, newStatus) => {
-    onStatusUpdate(requestId, type, newStatus);
-  };
-
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Solicitudes en Tiempo Real</CardTitle>
-          <CardDescription>Cargando solicitudes...</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="animate-pulse space-y-4">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-12 bg-muted rounded"></div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card>
@@ -97,10 +72,11 @@ const RealtimeRequestsTable = ({ requests, loading, onStatusUpdate }) => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los tipos</SelectItem>
-              <SelectItem value="inspection">Inspección</SelectItem>
-              <SelectItem value="legalization">Legalización</SelectItem>
-              <SelectItem value="power_buying">Power Buying</SelectItem>
-              <SelectItem value="vin_check">VIN Check</SelectItem>
+              {/* CORRECCIÓN: Valores coinciden con type_key del hook */}
+              <SelectItem value="inspections">Inspección</SelectItem>
+              <SelectItem value="legalizations">Legalización</SelectItem>
+              <SelectItem value="power_buying_requests">Power Buying</SelectItem>
+              <SelectItem value="vin_check_logs">VIN Check</SelectItem>
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -144,13 +120,15 @@ const RealtimeRequestsTable = ({ requests, loading, onStatusUpdate }) => {
                 </TableCell>
                 <TableCell>
                   <div>
-                    <div className="font-medium">{request.client_name}</div>
-                    <div className="text-sm text-muted-foreground">{request.client_email}</div>
+                    {/* CORRECCIÓN: Usar request.user.full_name y request.user.email */}
+                    <div className="font-medium">{request.user?.full_name || 'N/A'}</div>
+                    <div className="text-sm text-muted-foreground">{request.user?.email || ''}</div>
                   </div>
                 </TableCell>
                 <TableCell>
                   <span className="px-2 py-1 rounded-md bg-secondary text-secondary-foreground text-xs font-medium">
-                    {getTypeLabel(request.type)}
+                    {/* CORRECCIÓN: Usar request.type directamente, ya no se necesita getTypeLabel */}
+                    {request.type}
                   </span>
                 </TableCell>
                 <TableCell>{getStatusBadge(request.status)}</TableCell>
@@ -161,6 +139,7 @@ const RealtimeRequestsTable = ({ requests, loading, onStatusUpdate }) => {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="h-8 w-8 p-0">
+                        <span className="sr-only">Abrir menú</span>
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -171,24 +150,16 @@ const RealtimeRequestsTable = ({ requests, loading, onStatusUpdate }) => {
                         Ver Detalles
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        onClick={() => handleStatusChange(request.id, request.type, 'processing')}
-                        disabled={request.status === 'processing'}
-                      >
+                      {/* CORRECCIÓN: Pasar request.type_key a la función de actualización */}
+                      <DropdownMenuItem onClick={() => handleStatusChange(request.id, request.type_key, 'processing')}>
                         <Clock className="w-4 h-4 mr-2 text-blue-600" />
                         Marcar Procesando
                       </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => handleStatusChange(request.id, request.type, 'completed')}
-                        disabled={request.status === 'completed'}
-                      >
+                      <DropdownMenuItem onClick={() => handleStatusChange(request.id, request.type_key, 'completed')}>
                         <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
                         Marcar Completado
                       </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => handleStatusChange(request.id, request.type, 'rejected')}
-                        disabled={request.status === 'rejected'}
-                      >
+                      <DropdownMenuItem onClick={() => handleStatusChange(request.id, request.type_key, 'rejected')}>
                         <XCircle className="w-4 h-4 mr-2 text-red-600" />
                         Rechazar
                       </DropdownMenuItem>

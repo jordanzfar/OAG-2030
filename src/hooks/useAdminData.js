@@ -9,6 +9,104 @@ export const useAdminData = () => {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
 
+    // --- Funciones para Gestión de Solicitudes ---
+
+    const fetchAllRequests = useCallback(async () => {
+        setLoading(true);
+        try {
+            // --- PASO 1: OBTENER TODAS LAS SOLICITUDES SIN JOINS ---
+            const [inspectionsRes, legalizationsRes, powerBuyingRes, vinCheckRes] = await Promise.all([
+                supabase.from('inspections').select('*').order('created_at', { ascending: false }),
+                supabase.from('legalizations').select('*').order('created_at', { ascending: false }),
+                supabase.from('power_buying_requests').select('*').order('created_at', { ascending: false }),
+                supabase.from('vin_check_logs').select('*').order('created_at', { ascending: false })
+            ]);
+
+            // Manejo de errores de las consultas iniciales
+            const errors = [inspectionsRes.error, legalizationsRes.error, powerBuyingRes.error, vinCheckRes.error].filter(Boolean);
+            if (errors.length > 0) {
+                const errorMessages = errors.map(e => e.message).join(', ');
+                throw new Error(errorMessages);
+            }
+
+            const allRawRequests = [
+                ...inspectionsRes.data.map(r => ({ ...r, type: 'Inspección', type_key: 'inspections' })),
+                ...legalizationsRes.data.map(r => ({ ...r, type: 'Legalización', type_key: 'legalizations' })),
+                ...powerBuyingRes.data.map(r => ({ ...r, type: 'Power Buying', type_key: 'power_buying_requests' })),
+                ...vinCheckRes.data.map(r => ({ ...r, type: 'Chequeo VIN', type_key: 'vin_check_logs' }))
+            ];
+            
+            if (allRawRequests.length === 0) {
+                return { success: true, data: [] };
+            }
+
+            // --- PASO 2: OBTENER IDs DE USUARIO ÚNICOS Y BUSCAR SUS PERFILES ---
+            const userIds = [...new Set(allRawRequests.map(r => r.user_id).filter(Boolean))];
+            
+            const { data: profiles, error: profilesError } = await supabase
+                .from('users_profile')
+                .select('id, full_name, email')
+                .in('id', userIds);
+
+            if (profilesError) throw profilesError;
+
+            // --- PASO 3: UNIR LOS DATOS EN JAVASCRIPT ---
+            const profilesMap = new Map(profiles.map(p => [p.id, p]));
+
+            const allRequestsWithUsers = allRawRequests.map(request => {
+                const userProfile = profilesMap.get(request.user_id) || { full_name: 'Usuario no encontrado', email: '' };
+                return { ...request, user: userProfile };
+            });
+
+            // Ordenar finalmente por fecha de creación
+            const sortedRequests = allRequestsWithUsers.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            return { success: true, data: sortedRequests };
+
+        } catch (error) {
+            console.error('Error fetching all requests:', error);
+            toast({ variant: "destructive", title: "❌ Error al cargar solicitudes", description: error.message });
+            return { success: false, data: [] };
+        } finally {
+            setLoading(false);
+        }
+    }, [supabase, toast]);
+
+    const updateRequestStatus = useCallback(async (requestId, typeKey, newStatus) => {
+        setLoading(true);
+        const tableMap = {
+            'inspections': 'inspections',
+            'legalizations': 'legalizations',
+            'power_buying_requests': 'power_buying_requests',
+            'vin_check_logs': 'vin_check_logs'
+        };
+
+        const tableName = tableMap[typeKey];
+        if (!tableName) {
+            toast({ variant: "destructive", title: "❌ Error", description: "Tipo de solicitud inválido." });
+            setLoading(false);
+            return { success: false, error: { message: "Tipo de solicitud inválido." }};
+        }
+
+        try {
+            const { error } = await supabase
+                .from(tableName)
+                .update({ status: newStatus })
+                .eq('id', requestId);
+
+            if (error) throw error;
+
+            toast({ title: "✅ Estado actualizado", description: `La solicitud ha sido actualizada a "${newStatus}".` });
+            return { success: true };
+        } catch (error) {
+            console.error(`Error updating status for ${typeKey}:`, error);
+            toast({ variant: "destructive", title: "❌ Error al actualizar estado", description: error.message });
+            return { success: false, error };
+        } finally {
+            setLoading(false);
+        }
+    }, [supabase, toast]);
+
     // --- Funciones para Gestión de Usuarios y Verificación (KYC) ---
 
     const fetchAllUsers = useCallback(async () => {
@@ -26,9 +124,9 @@ export const useAdminData = () => {
                     const { data: documentsData, error: docsError } = await supabase
                         .from('documents')
                         .select('id, file_path, status, rejection_reason')
-                        .eq('user_id', profile.user_id)
+                        .eq('user_id', profile.id)
                         .or('file_path.like.%/id_front/%,file_path.like.%/id_back/%,file_path.like.%/selfie/%');
-                    
+
                     let documents = [];
                     if (!docsError && documentsData) {
                         documents = documentsData.map(doc => {
@@ -38,8 +136,8 @@ export const useAdminData = () => {
                             return { ...doc, url: publicUrl, type };
                         });
                     }
-                    
-                    return { ...profile, id: profile.user_id, documents };
+
+                    return { ...profile, documents };
                 })
             );
             return { success: true, data: usersWithDocs, error: null };
@@ -58,10 +156,10 @@ export const useAdminData = () => {
             const { error } = await supabase
                 .from('users_profile')
                 .update({ verification_status: verificationStatus })
-                .eq('user_id', userId);
+                .eq('id', userId);
 
             if (error) throw error;
-            
+
             toast({ title: "✅ Verificación de usuario actualizada", description: `El estado del usuario ahora es "${verificationStatus}".` });
             return { success: true };
         } catch (error) {
@@ -80,7 +178,7 @@ export const useAdminData = () => {
                 .from('documents')
                 .update({ status: newStatus, rejection_reason: rejectionReason })
                 .eq('id', documentId);
-            
+
             if (error) throw error;
 
             toast({ title: "✅ Documento actualizado", description: `El estado del documento ahora es "${newStatus}".` });
@@ -100,10 +198,10 @@ export const useAdminData = () => {
         setLoading(true);
         try {
              const { data, error } = await supabase.rpc('get_all_legalizations', {
-                p_status: filters?.status,
-                p_start_date: filters?.startDate,
-                p_end_date: filters?.endDate,
-            });
+                 p_status: filters?.status,
+                 p_start_date: filters?.startDate,
+                 p_end_date: filters?.endDate,
+             });
             if (error) throw error;
             return { success: true, data, error: null };
         } catch (error) {
@@ -117,7 +215,7 @@ export const useAdminData = () => {
 
     const getDocumentsForLegalization = useCallback(async (legalizationId) => {
         if (!legalizationId) return { success: false, data: null, error: 'No ID provided' };
-        
+
         const { data, error } = await supabase
             .from('documents')
             .select('*')
@@ -132,7 +230,7 @@ export const useAdminData = () => {
 
     const getDocumentDownloadUrl = useCallback(async (filePath, bucketName = 'kycdocuments') => {
         try {
-            const { data, error } = await supabase.storage.from(bucketName).createSignedUrl(filePath, 60 * 5);
+            const { data, error } = await supabase.storage.from(bucketName).createSignedUrl(filePath, 60 * 5); // 5 minutes validity
             if (error) throw error;
             return { success: true, url: data.signedUrl };
         } catch(error) {
@@ -140,6 +238,44 @@ export const useAdminData = () => {
             return { success: false, url: null, error };
         }
     }, [supabase]);
+
+const fetchAllDeposits = useCallback(async () => {
+        setLoading(true);
+        try {
+            const { data, error } = await supabase.rpc('get_all_deposits_with_user_details');
+            if (error) throw error;
+            return { success: true, data: data || [], error: null };
+        } catch (error) {
+            console.error('Error fetching all deposits:', error);
+            toast({ variant: "destructive", title: "❌ Error al cargar depósitos", description: error.message });
+            return { success: false, data: [], error };
+        } finally {
+            setLoading(false);
+        }
+    }, [supabase, toast]);
+
+    const updateDepositStatus = useCallback(async (depositId, newStatus) => {
+        setLoading(true);
+        try {
+            const { error } = await supabase.rpc('update_deposit_status', {
+                deposit_id_to_update: depositId,
+                new_status: newStatus
+            });
+
+            if (error) throw error;
+
+            toast({ title: "✅ Estado de depósito actualizado", description: `El depósito ha sido marcado como "${newStatus}".` });
+            return { success: true, error: null };
+        } catch (error) {
+            console.error('Error updating deposit status:', error);
+            toast({ variant: "destructive", title: "❌ Error al actualizar depósito", description: error.message });
+            return { success: false, error };
+        } finally {
+            setLoading(false);
+        }
+    }, [supabase, toast]);
+
+
 
     // --- Funciones Generales y de Dashboard ---
 
@@ -184,11 +320,11 @@ export const useAdminData = () => {
         }
     }, [supabase]);
 
-    // --- ✅ INICIO: FUNCIONES DE CHAT CORREGIDAS Y AÑADIDAS ---
+    // --- Funciones de Chat ---
 
     const sendAdminMessage = useCallback(async (clientId, content, file = null) => {
         if (!user) return { data: null, error: { message: "Usuario no autenticado." } };
-        
+
         let filePath = null;
         let fileType = null;
 
@@ -233,61 +369,56 @@ export const useAdminData = () => {
     }, [supabase, user]);
 
     const updateChatStatus = useCallback(async (clientId, newStatus) => {
-    if (!user) return { error: { message: 'Usuario no autenticado.' } };
-    
-    try {
-        const updateData = { status: newStatus };
+        if (!user) return { error: { message: 'Usuario no autenticado.' } };
 
-        // Si el nuevo estado es 'solucionado', registramos quién y cuándo.
-        if (newStatus === 'solucionado') {
-            updateData.closed_at = new Date().toISOString();
-            updateData.closed_by = user.id;
-        } 
-        // Si se reabre, limpiamos los datos de cierre.
-        else {
-            updateData.closed_at = null;
-            updateData.closed_by = null;
+        try {
+            const updateData = { status: newStatus };
+
+            if (newStatus === 'solucionado') {
+                updateData.closed_at = new Date().toISOString();
+                updateData.closed_by = user.id;
+            }
+            else {
+                updateData.closed_at = null;
+                updateData.closed_by = null;
+            }
+
+            const { data, error } = await supabase
+                .from('chat_conversations')
+                .update(updateData)
+                .eq('client_id', clientId)
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            toast({ title: "✅ Estado actualizado", description: `La conversación ahora está "${newStatus}".` });
+            return { data, error: null };
+
+        } catch (error) {
+            console.error('Error en updateChatStatus:', error);
+            toast({ variant: "destructive", title: "❌ Error al actualizar estado", description: error.message });
+            return { data: null, error };
         }
-
-        const { data, error } = await supabase
-            .from('chat_conversations')
-            .update(updateData)
-            .eq('client_id', clientId)
-            .select()
-            .single();
-
-        if (error) throw error;
-        
-        toast({ title: "✅ Estado actualizado", description: `La conversación ahora está "${newStatus}".` });
-        return { data, error: null };
-
-    } catch (error) {
-        console.error('Error en updateChatStatus:', error);
-        toast({ variant: "destructive", title: "❌ Error al actualizar estado", description: error.message });
-        return { data: null, error };
-    }
-}, [supabase, user, toast]);
-
-    // --- ✅ FIN: FUNCIONES DE CHAT ---
-
+    }, [supabase, user, toast]);
 
     // --- EXPORTACIONES DEL HOOK UNIFICADO ---
-    
+
     return {
         loading,
-        // KYC & Users
+        fetchAllRequests,
+        updateRequestStatus,
         fetchAllUsers,
         updateUserVerification,
         updateDocumentStatus,
-        // Legalizations
         fetchAllLegalizations,
         getDocumentsForLegalization,
         getDocumentDownloadUrl,
-        // Dashboard & Comms
         getDashboardStats,
         createNotification,
-        // Chat
         sendAdminMessage,
-        updateChatStatus, // <-- Se añade la nueva función
-    };
+        updateChatStatus,
+    fetchAllDeposits,
+  updateDepositStatus,
+};
 };

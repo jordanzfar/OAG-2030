@@ -45,6 +45,7 @@ import AdminInspectionsPage from './pages/admin/inspections/AdminInspectionsPage
 import AdminAuctionBidsPage from '@/pages/admin/auction-bids/AdminAuctionBidsPage';
 import ManageLegalizationsPage from '@/pages/admin/legalizations/ManageLegalizationsPage';
 import AdminPowerBuyingPage from '@/components/admin/AdminPowerBuyingPage';
+import AdminDepositsPage from '@/pages/admin/AdminDepositsPage'; 
 
 
 // ✅ INICIO DE CAMBIOS
@@ -139,6 +140,7 @@ function App() {
                                     <Route path="auction-bids" element={<AdminAuctionBidsPage />} />
                                     <Route path="/admin/legalizations" element={<ManageLegalizationsPage />} />
                                     <Route path="power-buying" element={<AdminPowerBuyingPage />} />
+                                    <Route path="deposits" element={<AdminDepositsPage />} />
                                     {/* ✅ FIN DE CAMBIOS */}
                                     <Route path="documents" element={<AdminDocumentsPage />} />
                                     <Route path="chat" element={<AdminChatListPage />} />
