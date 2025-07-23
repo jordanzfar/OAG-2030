@@ -402,6 +402,40 @@ const fetchAllDeposits = useCallback(async () => {
         }
     }, [supabase, user, toast]);
 
+    const fetchAllDocuments = async () => {
+  // 1. Obtener documentos
+  const { data: documents, error: docError } = await supabase
+    .from('documents')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (docError) {
+    console.error('Error al obtener los documentos:', docError);
+    return { success: false, data: [], error: docError };
+  }
+
+  // 2. Obtener todos los perfiles (alternativamente, puedes optimizar por IDs únicos)
+  const { data: profiles, error: profileError } = await supabase
+    .from('users_profile')
+    .select('id, full_name, email');
+
+  if (profileError) {
+    console.error('Error al obtener perfiles:', profileError);
+    return { success: false, data: [], error: profileError };
+  }
+
+  // 3. Combinar los datos manualmente
+  const documentsWithUserData = documents.map((doc) => {
+    const userProfile = profiles.find((p) => p.id === doc.user_id);
+    return {
+      ...doc,
+      user_profile: userProfile || null,
+    };
+  });
+
+  return { success: true, data: documentsWithUserData, error: null };
+};
+
     // --- EXPORTACIONES DEL HOOK UNIFICADO ---
 
     return {
@@ -418,7 +452,8 @@ const fetchAllDeposits = useCallback(async () => {
         createNotification,
         sendAdminMessage,
         updateChatStatus,
-    fetchAllDeposits,
-  updateDepositStatus,
+        fetchAllDeposits,
+        updateDepositStatus,
+        fetchAllDocuments,
 };
 };
