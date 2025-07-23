@@ -8,17 +8,29 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminData } from '@/hooks/useAdminData';
 import { useAdminActions } from '@/hooks/useAdminActions';
-import { Download, Eye, Loader2, Save } from 'lucide-react';
+import { Download, Loader2, Save } from 'lucide-react';
 
-// Sub-componente para la tarjeta de un documento
+// ✅ --- INICIO: DocumentCard MODIFICADO --- ✅
+// Este componente ahora muestra un <iframe> para PDFs.
 const DocumentCard = ({ doc, onStatusChange, onSaveStatus, onViewOrDownload }) => (
   <div className="space-y-4 pt-2">
     {doc.previewUrl ? (
-      <img 
-        src={doc.previewUrl}
-        alt={`Vista previa de ${doc.file_name}`} 
-        className="rounded-md max-h-60 w-full object-contain border bg-muted" 
-      />
+      <>
+        {doc.mime_type?.startsWith('image/') && (
+          <img 
+            src={doc.previewUrl}
+            alt={`Vista previa de ${doc.document_type}`} 
+            className="rounded-md max-h-80 w-full object-contain border bg-muted" 
+          />
+        )}
+        {doc.mime_type === 'application/pdf' && (
+          <iframe
+            src={doc.previewUrl}
+            title={`Vista previa de ${doc.document_type}`}
+            className="rounded-md w-full h-80 border bg-muted"
+          />
+        )}
+      </>
     ) : (
       <div className="text-center p-8 bg-muted rounded-md">
         <p className="text-muted-foreground">Vista previa no disponible para este tipo de archivo.</p>
@@ -45,6 +57,7 @@ const DocumentCard = ({ doc, onStatusChange, onSaveStatus, onViewOrDownload }) =
     </div>
   </div>
 );
+// ✅ --- FIN: DocumentCard MODIFICADO --- ✅
 
 // Componente Principal del Modal
 export function LegalizationDetailsModal({ isOpen, onClose, legalization, onUpdate }) {
@@ -67,12 +80,17 @@ export function LegalizationDetailsModal({ isOpen, onClose, legalization, onUpda
       const fetchDocs = async () => {
         setIsFetchingDocs(true);
         const result = await getDocumentsForLegalization(legalization.id);
+        
         if (result.success && result.data) {
+          const BUCKET_LEGALIZACIONES = 'documents';
           const docsWithUrls = await Promise.all(result.data.map(async (doc) => {
-            if (doc.mime_type?.startsWith('image/')) {
-              const urlResult = await getDocumentDownloadUrl(doc.file_path);
+            // ✅ --- INICIO: LÓGICA MODIFICADA --- ✅
+            // Ahora la condición incluye imágenes y PDFs.
+            if (doc.mime_type?.startsWith('image/') || doc.mime_type === 'application/pdf') {
+              const urlResult = await getDocumentDownloadUrl(doc.file_path, BUCKET_LEGALIZACIONES);
               return { ...doc, previewUrl: urlResult.success ? urlResult.url : null };
             }
+            // ✅ --- FIN: LÓGICA MODIFICADA --- ✅
             return doc;
           }));
           setDocuments(docsWithUrls);
@@ -93,8 +111,11 @@ export function LegalizationDetailsModal({ isOpen, onClose, legalization, onUpda
   }, [documentStatusFilter, documents]);
 
   const handleDownload = async (filePath) => {
-    const result = await getDocumentDownloadUrl(filePath);
-    if (result.success && result.url) window.open(result.url, '_blank');
+    const BUCKET_NAME = 'documents'; 
+    const result = await getDocumentDownloadUrl(filePath, BUCKET_NAME);
+    if (result.success && result.url) {
+        window.open(result.url, '_blank');
+    }
   };
 
   const handleDocumentStatusChange = (docId, newStatus) => {
@@ -125,13 +146,13 @@ export function LegalizationDetailsModal({ isOpen, onClose, legalization, onUpda
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4 max-h-[75vh] overflow-y-auto pr-4">
           
-          {/* ✅ --- CÓDIGO RESTAURADO DE LA COLUMNA IZQUIERDA --- ✅ */}
+          {/* --- Columna Izquierda: Información y Acciones --- */}
           <div className="space-y-6">
             <Card>
               <CardHeader><CardTitle className="text-lg">Información General</CardTitle></CardHeader>
               <CardContent className="space-y-2 text-sm">
-                 <p><strong>Marca/Modelo:</strong> {legalization.vehicle_info?.marca} {legalization.vehicle_info?.modelo} ({legalization.vehicle_info?.ano})</p>
-                 <p><strong>Propietario:</strong> {legalization.owner_info?.name} ({legalization.owner_info?.phone})</p>
+                  <p><strong>Marca/Modelo:</strong> {legalization.vehicle_info?.marca} {legalization.vehicle_info?.modelo} ({legalization.vehicle_info?.ano})</p>
+                  <p><strong>Propietario:</strong> {legalization.owner_info?.name} ({legalization.owner_info?.phone})</p>
               </CardContent>
             </Card>
             <Card>
@@ -159,7 +180,7 @@ export function LegalizationDetailsModal({ isOpen, onClose, legalization, onUpda
 
           {/* --- Columna Derecha: Pestañas de Documentos --- */}
           <div className="space-y-4">
-             <Card className="h-full">
+              <Card className="h-full">
                 <CardHeader><CardTitle className="text-lg">Documentos Adjuntos</CardTitle></CardHeader>
                 <CardContent>
                   {isFetchingDocs ? <Loader2 className="animate-spin mx-auto" /> : 
@@ -178,16 +199,16 @@ export function LegalizationDetailsModal({ isOpen, onClose, legalization, onUpda
                           </Select>
                         </div>
                         {filteredDocuments.length > 0 ? (
-                           <Tabs defaultValue={filteredDocuments[0].id} className="w-full">
-                            <TabsList className="h-auto flex-wrap justify-start">
-                              {filteredDocuments.map(doc => <TabsTrigger key={doc.id} value={doc.id} className="flex-shrink-0">{doc.document_type}</TabsTrigger>)}
-                            </TabsList>
-                            {filteredDocuments.map(doc => (
-                              <TabsContent key={doc.id} value={doc.id}>
-                                <DocumentCard doc={doc} onStatusChange={handleDocumentStatusChange} onSaveStatus={handleSaveDocumentStatus} onViewOrDownload={handleDownload}/>
-                              </TabsContent>
-                            ))}
-                          </Tabs>
+                            <Tabs defaultValue={filteredDocuments[0].id} className="w-full">
+                              <TabsList className="h-auto flex-wrap justify-start">
+                                {filteredDocuments.map(doc => <TabsTrigger key={doc.id} value={doc.id} className="flex-shrink-0">{doc.document_type}</TabsTrigger>)}
+                              </TabsList>
+                              {filteredDocuments.map(doc => (
+                                <TabsContent key={doc.id} value={doc.id}>
+                                  <DocumentCard doc={doc} onStatusChange={handleDocumentStatusChange} onSaveStatus={handleSaveDocumentStatus} onViewOrDownload={handleDownload}/>
+                                </TabsContent>
+                              ))}
+                            </Tabs>
                         ) : (
                           <p className="text-muted-foreground text-sm text-center py-4">No hay documentos que coincidan con el estado seleccionado.</p>
                         )}
@@ -195,7 +216,7 @@ export function LegalizationDetailsModal({ isOpen, onClose, legalization, onUpda
                     ) : <p className="text-muted-foreground text-sm text-center py-4">No hay documentos para esta solicitud.</p>
                   }
                 </CardContent>
-             </Card>
+              </Card>
           </div>
         </div>
         <DialogFooter>
