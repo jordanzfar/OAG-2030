@@ -2,31 +2,53 @@ import React from 'react';
 import {
   CheckCircle2, CalendarClock, Hourglass, PauseCircle, XCircle, HelpCircle,
   RefreshCw, Award, TrendingDown, ThumbsUp, CircleDollarSign, BadgeCheck, FileSearch,
-  FileWarning, AlertCircle, CreditCard, Zap // ✅ Se añade el icono 'Zap'
+  FileWarning, AlertCircle, CreditCard, Zap, Shield, UserCheck, UserX
 } from 'lucide-react';
 
 const statusConfig = {
-  // --- ESTADOS DE POWER BUYING ---
-  active: { text: 'Activo', icon: <Zap className="h-3.5 w-3.5" />, className: 'bg-teal-100 text-teal-800' },
-  
-  // --- ESTADOS DE LEGALIZACIONES ---
+  // --- Estados Genéricos y de Solicitudes ---
   pending: { text: 'Pendiente', icon: <Hourglass className="h-3.5 w-3.5" />, className: 'bg-yellow-100 text-yellow-800' },
+  approved: { text: 'Aprobada', icon: <ThumbsUp className="h-3.5 w-3.5" />, className: 'bg-cyan-100 text-cyan-800' },
+  processing: { text: 'Procesando', icon: <RefreshCw className="h-3.5 w-3.5" />, className: 'bg-blue-100 text-blue-800' },
+  completed: { text: 'Completado', icon: <BadgeCheck className="h-3.5 w-3.5" />, className: 'bg-green-100 text-green-800' },
+  rejected: { text: 'Rechazado', icon: <XCircle className="h-3.5 w-3.5" />, className: 'bg-red-100 text-red-800' },
+  cancelled: { text: 'Cancelada', icon: <XCircle className="h-3.5 w-3.5" />, className: 'bg-gray-100 text-gray-700' },
+  
+  // --- Estados de Inspección ---
+  scheduled: { text: 'Programada', icon: <CalendarClock className="h-3.5 w-3.5" />, className: 'bg-blue-100 text-blue-800' },
+  on_hold: { text: 'En Espera', icon: <PauseCircle className="h-3.5 w-3.5" />, className: 'bg-gray-100 text-gray-700' },
+
+  // --- Estados de Legalización ---
   missing_documents: { text: 'Documentos Faltantes', icon: <FileWarning className="h-3.5 w-3.5" />, className: 'bg-orange-100 text-orange-800' },
   missing_information: { text: 'Información Faltante', icon: <AlertCircle className="h-3.5 w-3.5" />, className: 'bg-orange-100 text-orange-800' },
   deposit_required: { text: 'Depósito Requerido', icon: <CircleDollarSign className="h-3.5 w-3.5" />, className: 'bg-blue-100 text-blue-800' },
-  processing: { text: 'Procesando', icon: <RefreshCw className="h-3.5 w-3.5" />, className: 'bg-blue-100 text-blue-800' },
   final_payment_required: { text: 'Pago Final Requerido', icon: <CreditCard className="h-3.5 w-3.5" />, className: 'bg-blue-100 text-blue-800' },
-  completed: { text: 'Completado', icon: <BadgeCheck className="h-3.5 w-3.5" />, className: 'bg-green-100 text-green-800' },
-  
-  // Otros estados
-  approved: { text: 'Aprobada', icon: <ThumbsUp className="h-3.5 w-3.5" />, className: 'bg-cyan-100 text-cyan-800' },
-  rejected: { text: 'Rechazado', icon: <XCircle className="h-3.5 w-3.5" />, className: 'bg-red-100 text-red-800' },
   in_review: { text: 'En Revisión', icon: <FileSearch className="h-3.5 w-3.5" />, className: 'bg-purple-100 text-purple-800' },
+  
+  // --- Estados de Pujas (Bids) ---
   won: { text: 'Ganada', icon: <Award className="h-3.5 w-3.5" />, className: 'bg-green-100 text-green-800' },
   lost: { text: 'Perdida', icon: <TrendingDown className="h-3.5 w-3.5" />, className: 'bg-red-100 text-red-800' },
+  outbid: { text: 'Superada', icon: <TrendingDown className="h-3.5 w-3.5" />, className: 'bg-orange-100 text-orange-800' },
+  processed: { text: 'Procesada', icon: <RefreshCw className="h-3.5 w-3.5" />, className: 'bg-blue-100 text-blue-800' },
+  pending_payment: { text: 'Pendiente de Pago', icon: <CircleDollarSign className="h-3.5 w-3.5" />, className: 'bg-orange-100 text-orange-800' },
+
+  // --- Estados de Power Buying ---
+  active: { text: 'Activo', icon: <Zap className="h-3.5 w-3.5" />, className: 'bg-teal-100 text-teal-800' },
+
+  // --- ESTADOS DE VERIFICACIÓN DE USUARIO ---
+  verified: { text: 'Verificado', icon: <UserCheck className="h-3.5 w-3.5" />, className: 'bg-green-100 text-green-800' },
+  paused: { text: 'Pausado', icon: <PauseCircle className="h-3.5 w-3.5" />, className: 'bg-orange-100 text-orange-800' },
+  not_verified: { text: 'Sin Verificar', icon: <HelpCircle className="h-3.5 w-3.5" />, className: 'bg-gray-100 text-gray-700' },
+
+  // --- ROLES DE USUARIO ---
+  admin: { text: 'Admin', icon: <Shield className="h-3.5 w-3.5" />, className: 'bg-purple-100 text-purple-800' },
+  client: { text: 'Cliente', icon: <Shield className="h-3.5 w-3.5" />, className: 'bg-blue-100 text-blue-800' },
+  support: { text: 'Soporte', icon: <Shield className="h-3.5 w-3.5" />, className: 'bg-green-100 text-green-800' },
+  validation: { text: 'Validación', icon: <Shield className="h-3.5 w-3.5" />, className: 'bg-orange-100 text-orange-800' },
+  finance: { text: 'Finanzas', icon: <Shield className="h-3.5 w-3.5" />, className: 'bg-cyan-100 text-cyan-800' },
   
   // Fallback
-  default: { text: 'Desconocido', icon: <HelpCircle className="h-3.5 w-3.5" />, className: 'bg-gray-100 text-gray-700' },
+  default: { text: 'N/A', icon: <HelpCircle className="h-3.5 w-3.5" />, className: 'bg-gray-100 text-gray-700' },
 };
 
 export const StatusBadge = ({ status }) => {

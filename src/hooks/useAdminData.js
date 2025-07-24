@@ -239,12 +239,54 @@ export const useAdminData = () => {
         }
     }, [supabase]);
 
-const fetchAllDeposits = useCallback(async () => {
+  const fetchAllDeposits = useCallback(async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase.rpc('get_all_deposits_with_user_details');
-            if (error) throw error;
-            return { success: true, data: data || [], error: null };
+            // PASO 1: Obtener todos los depósitos.
+            const { data: deposits, error: depositsError } = await supabase
+                .from('deposits')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (depositsError) {
+                throw depositsError;
+            }
+
+            if (!deposits || deposits.length === 0) {
+                return { success: true, data: [] }; // No hay depósitos, retornamos un array vacío.
+            }
+
+            // PASO 2: Obtener los IDs de usuario únicos de los depósitos.
+            const userIds = [...new Set(deposits.map(dep => dep.user_id).filter(Boolean))];
+
+            if (userIds.length === 0) {
+                // Hay depósitos pero ninguno tiene un user_id asociado.
+                // Los devolvemos añadiendo un user_profile nulo para mantener la estructura.
+                const data = deposits.map(d => ({ ...d, user_profile: null }));
+                return { success: true, data, error: null };
+            }
+
+            // PASO 3: Buscar los perfiles de esos usuarios.
+            const { data: profiles, error: profilesError } = await supabase
+                .from('users_profile')
+                .select('id, full_name, email')
+                .in('id', userIds);
+
+            if (profilesError) {
+                throw profilesError;
+            }
+
+            // PASO 4: Crear un mapa de perfiles para unirlos eficientemente.
+            const profilesMap = new Map(profiles.map(p => [p.id, p]));
+
+            // PASO 5: Unir los depósitos con sus respectivos perfiles.
+            const data = deposits.map(deposit => ({
+                ...deposit,
+                user_profile: profilesMap.get(deposit.user_id) || null // Asigna el perfil o null si no se encuentra.
+            }));
+
+            return { success: true, data, error: null };
+
         } catch (error) {
             console.error('Error fetching all deposits:', error);
             toast({ variant: "destructive", title: "❌ Error al cargar depósitos", description: error.message });
@@ -254,9 +296,10 @@ const fetchAllDeposits = useCallback(async () => {
         }
     }, [supabase, toast]);
 
-    const updateDepositStatus = useCallback(async (depositId, newStatus) => {
+     const updateDepositStatus = useCallback(async (depositId, newStatus) => {
         setLoading(true);
         try {
+            // Esta función usa RPC, tal como estaba en tu código original.
             const { error } = await supabase.rpc('update_deposit_status', {
                 deposit_id_to_update: depositId,
                 new_status: newStatus

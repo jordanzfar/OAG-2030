@@ -7,8 +7,18 @@ import { StatusBadge } from '@/components/ui/StatusBadge'; // Importamos nuestro
 
 export const columns = [
   {
-    accessorKey: "short_id",
+    accessorKey: "user_profile", // Usamos el objeto anidado como accessor
     header: "Usuario",
+    cell: ({ row }) => {
+      const user = row.original.user_profile;
+      return (
+        <div className="flex flex-col">
+          <span className="font-medium">{user?.full_name || 'Sin Nombre'}</span>
+          <span className="text-xs text-muted-foreground font-mono">{user?.short_id || 'N/A'}</span>
+          <span className="text-xs text-muted-foreground">{user?.email || 'N/A'}</span>
+        </div>
+      );
+    },
   },
   {
     accessorKey: "vin",
