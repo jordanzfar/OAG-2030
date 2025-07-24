@@ -57,14 +57,38 @@ const NotificationProvider = ({ children }) => {
     } else {
         filter = `user_id=eq.${user.id}`;
     }
-
+    const channelParams = {
+            config: {
+                websocket: true,
+            },
+        };
     // ✅ AÑADE ESTE OTRO LOG para ver el filtro que se está aplicando
     console.log(`Aplicando filtro de notificación: ${filter}`);
 
     const channel = supabase
-        .channel(`notifications_channel_${user.id}`)
-        // ... resto del código sin cambios ...
-}, [user, userRole, handleNewNotification]);
+            .channel(`notifications_channel_${user.id}`, channelParams) // ✅ Pasa los nuevos parámetros aquí
+            .on(
+                'postgres_changes', 
+                { 
+                    event: 'INSERT', 
+                    schema: 'public', 
+                    table: 'notifications', 
+                    filter: filter 
+                }, 
+                handleNewNotification
+            )
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log(`Canal de notificaciones conectado (WebSocket) con filtro: ${filter}`);
+                }
+            });
+
+        return () => {
+            if (channel) {
+                supabase.removeChannel(channel);
+            }
+        };
+    }, [user, userRole, handleNewNotification]);
 
     const unreadCount = useMemo(() => notifications.filter(n => !n.is_read).length, [notifications]);
 

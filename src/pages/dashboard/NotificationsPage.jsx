@@ -1,290 +1,249 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, AlertTriangle, Info, Bell, Search, Clock, BookMarked as MarkAsUnread } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// ✅ 1. Importamos los hooks y utilidades que realmente necesitamos
-import { useNotifications } from '@/hooks/useNotifications';
-import { buildNotificationDescription } from '@/lib/utils';
+// --- Iconos ---
+import { 
+    Bell, Search, Clock, CheckCircle, X, Package,
+    AlertTriangle, Info, DollarSign, XCircle, ShieldCheck, 
+    ShieldAlert, Gavel, Megaphone, Trophy, CircleSlash,
+    ChevronLeft, ChevronRight
+} from 'lucide-react';
 
+
+// --- Hooks y Utilidades ---
+// Se restauran los hooks y utilidades para usar datos reales.
+import { useNotifications } from '@/hooks/useNotifications';
+import { getNotificationCategory, buildNotificationDescription } from '@/lib/utils';
+
+
+// --- Componente de Ícono Dinámico ---
+const NotificationIcon = ({ notification }) => {
+    const iconHint = notification.metadata?.icon;
+    let IconComponent = Bell;
+    let iconColor = "text-muted-foreground";
+
+    const iconMap = {
+        'gavel': { Cmp: Gavel, color: "text-gray-500" },
+        'megaphone': { Cmp: Megaphone, color: "text-orange-500" },
+        'trophy': { Cmp: Trophy, color: "text-yellow-500" },
+        'circle_slash': { Cmp: CircleSlash, color: "text-red-600" },
+        'check_circle': { Cmp: CheckCircle, color: "text-green-500" },
+        'clock': { Cmp: Clock, color: "text-blue-500" },
+        'dollar_sign': { Cmp: DollarSign, color: "text-yellow-600" },
+        'package': { Cmp: Package, color: "text-gray-600" },
+        'alert': { Cmp: AlertTriangle, color: "text-red-500" },
+        'info': { Cmp: Info, color: "text-blue-400" },
+    };
+
+    if (iconHint && iconMap[iconHint]) {
+        IconComponent = iconMap[iconHint].Cmp;
+        iconColor = iconMap[iconHint].color;
+    }
+
+    return <IconComponent className={`w-6 h-6 ${iconColor}`} />;
+};
+
+
+// --- Componente Principal ---
 const NotificationsPage = () => {
-    // ✅ 2. Obtenemos las notificaciones y funciones directamente del contexto global
+    // --- CONEXIÓN A DATOS REALES ---
+    // Usamos el hook para obtener notificaciones, contador y funciones del estado global.
     const { notifications, unreadCount, updateNotificationStatus, markAllAsRead } = useNotifications();
 
-    // El estado local ahora solo se encarga de los filtros de la UI
-    const [filteredNotifications, setFilteredNotifications] = useState([]);
-    const [loading, setLoading] = useState(true);
+
+    // --- ESTADO DE PAGINACIÓN Y FILTROS ---
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterType, setFilterType] = useState('all');
+    const [filterCategory, setFilterCategory] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all');
+    const [currentPage, setCurrentPage] = useState(1);
+    const NOTIFICATIONS_PER_PAGE = 10;
 
-    // ✅ 3. El useEffect de filtros ahora reacciona al estado global 'notifications'
+    const availableCategories = useMemo(() => {
+        const categories = new Set(notifications.map(n => getNotificationCategory(n.type)));
+        return Array.from(categories).sort();
+    }, [notifications]);
+
+    // Primero, filtramos todas las notificaciones
+    const filteredNotifications = useMemo(() => {
+        return notifications.filter(n => {
+            const category = getNotificationCategory(n.type);
+            const matchesCategory = filterCategory === 'all' || category === filterCategory;
+            const matchesStatus = filterStatus === 'all' || (filterStatus === 'read' && n.is_read) || (filterStatus === 'unread' && !n.is_read);
+            // La búsqueda ahora usa la descripción completa para mejores resultados
+            const matchesSearch = searchTerm === '' || buildNotificationDescription(n).toLowerCase().includes(searchTerm.toLowerCase());
+            return matchesCategory && matchesStatus && matchesSearch;
+        });
+    }, [notifications, searchTerm, filterCategory, filterStatus]);
+
+    // Reseteamos a la página 1 si los filtros cambian
     useEffect(() => {
-        setLoading(true);
-        let filtered = [...notifications];
+        setCurrentPage(1);
+    }, [searchTerm, filterCategory, filterStatus]);
+    
+    // Calculamos el total de páginas y las notificaciones para la página actual
+    const totalPages = Math.ceil(filteredNotifications.length / NOTIFICATIONS_PER_PAGE);
+    const paginatedNotifications = useMemo(() => {
+        const startIndex = (currentPage - 1) * NOTIFICATIONS_PER_PAGE;
+        return filteredNotifications.slice(startIndex, startIndex + NOTIFICATIONS_PER_PAGE);
+    }, [filteredNotifications, currentPage]);
 
-        if (searchTerm) {
-            // El filtro ahora busca en el mensaje construido
-            filtered = filtered.filter(n => 
-                buildNotificationDescription(n).toLowerCase().includes(searchTerm.toLowerCase())
-            );
-        }
-        if (filterType !== 'all') {
-            filtered = filtered.filter(n => n.type === filterType);
-        }
-        if (filterStatus === 'unread') {
-            filtered = filtered.filter(n => !n.is_read);
-        } else if (filterStatus === 'read') {
-            filtered = filtered.filter(n => n.is_read);
-        }
-        
-        setFilteredNotifications(filtered);
-        setLoading(false);
-    }, [notifications, searchTerm, filterType, filterStatus]);
 
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'payment_required':
-        return <AlertTriangle className="w-5 h-5 text-yellow-500" />;
-      case 'document_missing':
-        return <AlertTriangle className="w-5 h-5 text-red-500" />;
-      case 'status_update':
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case 'info':
-        return <Info className="w-5 h-5 text-blue-500" />;
-      default:
-        return <Bell className="w-5 h-5 text-muted-foreground" />;
-    }
-  };
+    const formatDateTime = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    };
 
-  const getNotificationTypeBadge = (type) => {
-    switch (type) {
-      case 'payment_required':
-        return <Badge variant="destructive">Pago Requerido</Badge>;
-      case 'document_missing':
-        return <Badge variant="destructive">Documento Faltante</Badge>;
-      case 'status_update':
-        return <Badge variant="default">Actualización</Badge>;
-      case 'info':
-        return <Badge variant="secondary">Información</Badge>;
-      default:
-        return <Badge variant="outline">General</Badge>;
-    }
-  };
-
-  const formatDateTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('es-ES', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const getUnreadCount = () => {
-    return notifications.filter(n => !n.is_read).length;
-  };
-
-  if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex justify-center items-center py-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p>Cargando notificaciones...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Todas las Notificaciones</h1>
-          <p className="text-muted-foreground">
-            Gestiona y revisa todas tus notificaciones. {getUnreadCount() > 0 && `Tienes ${getUnreadCount()} notificaciones sin leer.`}
-          </p>
-        </div>
-        {getUnreadCount() > 0 && (
-          <Button onClick={markAllAsRead} variant="outline">
-            <CheckCircle className="w-4 h-4 mr-2" />
-            Marcar todas como leídas
-          </Button>
-        )}
-      </div>
-
-      {/* Filtros y búsqueda */}
-      <Card className="bg-card border-border shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-lg">Filtros</CardTitle>
-          <CardDescription>Filtra y busca notificaciones específicas</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  placeholder="Buscar notificaciones..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+        <div className="space-y-8 p-4 md:p-6">
+            {/* --- Cabecera de la Página --- */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">Centro de Notificaciones</h1>
+                    <p className="text-muted-foreground mt-1">
+                        Revisa y gestiona todas tus alertas y actualizaciones.
+                    </p>
+                </div>
+                {unreadCount > 0 && (
+                    <Button onClick={markAllAsRead}>
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Marcar todas como leídas ({unreadCount})
+                    </Button>
+                )}
             </div>
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-full md:w-[200px]">
-                <SelectValue placeholder="Filtrar por tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los tipos</SelectItem>
-                <SelectItem value="payment_required">Pago Requerido</SelectItem>
-                <SelectItem value="document_missing">Documento Faltante</SelectItem>
-                <SelectItem value="status_update">Actualización</SelectItem>
-                <SelectItem value="info">Información</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-full md:w-[200px]">
-                <SelectValue placeholder="Filtrar por estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="unread">No leídas</SelectItem>
-                <SelectItem value="read">Leídas</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Lista de notificaciones */}
-      <div className="space-y-4">
-        {filteredNotifications.length === 0 ? (
-          <Card className="bg-card border-border shadow-lg">
-            <CardContent className="p-8 text-center">
-              <Bell className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No hay notificaciones</h3>
-              <p className="text-muted-foreground">
-                {searchTerm || filterType !== 'all' || filterStatus !== 'all' 
-                  ? 'No se encontraron notificaciones que coincidan con los filtros aplicados.'
-                  : 'No tienes notificaciones en este momento.'
-                }
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <AnimatePresence>
-            {filteredNotifications.map((notification) => (
-              <motion.div
-                key={notification.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Card className={`bg-card border-border shadow-lg hover:shadow-xl transition-shadow ${
-                  !notification.is_read ? 'ring-2 ring-primary/20' : ''
-                }`}>
-                  <CardContent className="p-6">
-                    <div className="flex items-start space-x-4">
-                      <div className="flex-shrink-0">
-                        {getNotificationIcon(notification.type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center space-x-2">
-                            {getNotificationTypeBadge(notification.type)}
-                            {!notification.is_read && (
-                              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                                Nuevo
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                               onClick={() => updateNotificationStatus(notification.id, !notification.is_read)}
-                            >
-                              {notification.is_read ? (
-                                <>
-                                  <MarkAsUnread className="w-4 h-4 mr-1" />
-                                  Marcar como no leída
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle className="w-4 h-4 mr-1" />
-                                  Marcar como leída
-                                </>
-                              )}
-                            </Button>            
-                          </div>
+            {/* --- Panel de Filtros --- */}
+            <Card className="bg-card/50 border-border/50 shadow-sm">
+                <CardContent className="p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                            <Input
+                                placeholder="Buscar por contenido..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-10"
+                            />
                         </div>
-                       <p className={`text-sm mb-3 ${!notification.is_read ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
-                        {buildNotificationDescription(notification)}
-                         </p>
-                        <p className={`text-sm mb-3 ${
-                          !notification.is_read ? 'font-medium text-foreground' : 'text-muted-foreground'
-                        }`}>
-                          {notification.message}
-                        </p>
-                        <div className="flex items-center text-xs text-muted-foreground">
-                          <Clock className="w-3 h-3 mr-1" />
-                          {formatDateTime(notification.created_at)}
-                        </div>
-                      </div>
+                        <Select value={filterCategory} onValueChange={setFilterCategory}>
+                            <SelectTrigger><SelectValue placeholder="Filtrar por categoría" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Todas las categorías</SelectItem>
+                                {availableCategories.map(cat => (
+                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Select value={filterStatus} onValueChange={setFilterStatus}>
+                            <SelectTrigger><SelectValue placeholder="Filtrar por estado" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Todas</SelectItem>
+                                <SelectItem value="unread">No leídas</SelectItem>
+                                <SelectItem value="read">Leídas</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        )}
-      </div>
+                </CardContent>
+            </Card>
 
-      {/* Estadísticas */}
-      {notifications.length > 0 && (
-        <Card className="bg-card border-border shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-lg">Estadísticas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-foreground">{notifications.length}</div>
-                <div className="text-sm text-muted-foreground">Total</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-red-600">{getUnreadCount()}</div>
-                <div className="text-sm text-muted-foreground">Sin leer</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
-                  {notifications.filter(n => n.is_read).length}
-                </div>
-                <div className="text-sm text-muted-foreground">Leídas</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">
-                  {notifications.filter(n => n.type === 'status_update').length}
-                </div>
-                <div className="text-sm text-muted-foreground">Actualizaciones</div>
-              </div>
+            {/* --- Lista de Notificaciones --- */}
+            <div className="space-y-3">
+                <AnimatePresence>
+                    {paginatedNotifications.length > 0 ? (
+                        paginatedNotifications.map((notification) => (
+                            <motion.div
+                                key={notification.id}
+                                layout
+                                initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: -20, scale: 0.98 }}
+                                transition={{ duration: 0.3, ease: "easeInOut" }}
+                            >
+                                <Card className={`transition-all duration-300 ${!notification.is_read ? 'bg-primary/5 border-primary/20' : 'bg-card/60'}`}>
+                                    <CardContent className="p-4 flex items-start space-x-4">
+                                        <div className="flex-shrink-0 mt-1">
+                                            <NotificationIcon notification={notification} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <Badge variant={!notification.is_read ? "default" : "secondary"}>
+                                                    {getNotificationCategory(notification.type)}
+                                                </Badge>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-xs"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        updateNotificationStatus(notification.id, !notification.is_read);
+                                                    }}
+                                                >
+                                                    {notification.is_read ? "Marcar no leída" : "Marcar leída"}
+                                                </Button>
+                                            </div>
+                                            <p className={`text-sm ${!notification.is_read ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
+                                                {buildNotificationDescription(notification)}
+                                            </p>
+                                            <div className="flex items-center text-xs text-muted-foreground mt-2">
+                                                <Clock className="w-3 h-3 mr-1.5" />
+                                                {formatDateTime(notification.created_at)}
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+                        ))
+                    ) : (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
+                            <Card className="bg-card border-dashed">
+                                <CardContent className="p-12 text-center">
+                                    <Bell className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+                                    <h3 className="text-lg font-semibold">Todo en orden</h3>
+                                    <p className="text-muted-foreground mt-1">
+                                        {notifications.length > 0
+                                            ? 'No hay notificaciones que coincidan con tus filtros.'
+                                            : 'No tienes notificaciones por ahora.'
+                                        }
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
+
+            {/* --- CONTROLES DE PAGINACIÓN --- */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-center space-x-4 pt-4">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                    >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        Anterior
+                    </Button>
+                    <span className="text-sm font-medium text-muted-foreground">
+                        Página {currentPage} de {totalPages}
+                    </span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                    >
+                        Siguiente
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                </div>
+            )}
+        </div>
+    );
 };
 
 export default NotificationsPage;

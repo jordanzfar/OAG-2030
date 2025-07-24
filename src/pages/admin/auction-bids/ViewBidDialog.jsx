@@ -42,6 +42,7 @@ export function ViewBidDialog({ bid, isOpen, onClose, onUpdateSuccess }) {
       if (error) throw error;
 
       toast({ title: "Éxito", description: "El estado de la puja ha sido actualizado." });
+      onClose();
       onUpdateSuccess();
     } catch (error) {
       console.error("Error updating bid status:", error.message);
@@ -101,6 +102,8 @@ export function ViewBidDialog({ bid, isOpen, onClose, onUpdateSuccess }) {
                   <SelectItem value="lost">Perdida</SelectItem>
                   <SelectItem value="pending_payment">Pendiente de Pago</SelectItem>
                   <SelectItem value="completed">Completada</SelectItem>
+                  <SelectItem value="cancelled">Cancelada</SelectItem>
+                  <SelectItem value="outbid">Puja Superada</SelectItem>
                 </SelectContent>
               </Select>
             </div>

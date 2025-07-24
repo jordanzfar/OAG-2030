@@ -20,6 +20,8 @@ const AdminAuctionBidsPage = () => {
     { value: 'lost', label: 'Perdida' },
     { value: 'pending_payment', label: 'Pendiente de Pago' },
     { value: 'completed', label: 'Completada' },
+    { value: 'outbid', label: 'Puja Superada' },
+    { value: 'cancelled', label: 'Cancelada' },
   ];
 
   const loadBids = useCallback(async () => {
