@@ -30,7 +30,7 @@ const SidebarNav = () => {
 
         { title: "Documentos", href: "/admin/documents", icon: FileCheck2, roles: ['admin', 'validation'] },
         { title: "Chat", href: "/admin/chat", icon: MessageSquare, roles: ['admin', 'support'], notificationCount: unreadMessageCount },
-        { title: "Pagos", href: "/admin/payments", icon: Banknote, roles: ['admin', 'finance'] },
+       // { title: "Pagos", href: "/admin/payments", icon: Banknote, roles: ['admin', 'finance'] },
        // { title: "Finanzas", href: "/admin/finance", icon: DollarSign, roles: ['admin', 'finance'] },
         //{ title: "Verificaciones", href: "/admin/verification", icon: Shield, roles: ['admin', 'validation'] },
         { title: "Notificaciones", href: "/admin/notifications", icon: Bell, roles: ['admin', 'support', 'validation', 'finance'] },
