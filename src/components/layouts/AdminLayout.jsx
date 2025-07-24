@@ -9,7 +9,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { useToast } from '@/components/ui/use-toast';
 import AdminNotificationsWidget from '@/components/admin/AdminNotificationsWidget';
-import { NotificationProvider, useNotifications } from '@/context/NotificationContext.jsx';
+import { useNotifications } from '@/hooks/useNotifications';
+import NotificationProvider from '@/providers/NotificationProvider';
 import { LogOut, LayoutDashboard, FileStack, FileCheck2, MessageSquare, Banknote, Users, BarChart2, Settings, Bell, DollarSign, Shield, ClipboardCheck, SearchCheck, Gavel } from 'lucide-react';
 
 const SidebarNav = () => {

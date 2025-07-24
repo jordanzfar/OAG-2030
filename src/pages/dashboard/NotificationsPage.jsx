@@ -1,65 +1,37 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, AlertTriangle, Info, Clock, Bell, Search, Filter, BookMarked as MarkAsUnread, Loader2 } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Info, Bell, Search, Clock, BookMarked as MarkAsUnread } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '@/hooks/useAuth';
-import { useSupabaseData } from '@/hooks/useSupabaseData';
+
+// ✅ 1. Importamos los hooks y utilidades que realmente necesitamos
+import { useNotifications } from '@/hooks/useNotifications';
+import { buildNotificationDescription } from '@/lib/utils';
 
 const NotificationsPage = () => {
-    const { toast } = useToast();
-    const { user } = useAuth();
-    const { fetchRecords, updateRecord } = useSupabaseData();
-    const [notifications, setNotifications] = useState([]);
+    // ✅ 2. Obtenemos las notificaciones y funciones directamente del contexto global
+    const { notifications, unreadCount, updateNotificationStatus, markAllAsRead } = useNotifications();
+
+    // El estado local ahora solo se encarga de los filtros de la UI
     const [filteredNotifications, setFilteredNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all');
 
-    // ====================================================================
-    // --- INICIO DE LA CORRECCIÓN ---
-    // ====================================================================
-
-    // 1. Estabilizamos la función de carga
-    const loadNotifications = useCallback(async () => {
-        if (!user) {
-            setNotifications([]);
-            return;
-        }
-
-        const result = await fetchRecords('notifications', { user_id: user.id }, {
-            orderBy: { column: 'created_at', ascending: false }
-        });
-
-        if (result.success) {
-            setNotifications(result.data || []);
-        }
-    }, [user, fetchRecords]);
-
-    // 2. Creamos un useEffect robusto para la carga inicial
+    // ✅ 3. El useEffect de filtros ahora reacciona al estado global 'notifications'
     useEffect(() => {
-        const runLoad = async () => {
-            if (!user) {
-                setLoading(false);
-                return;
-            }
-            setLoading(true);
-            await loadNotifications();
-            setLoading(false);
-        };
-        runLoad();
-    }, [user, loadNotifications]);
-
-    // 3. Creamos un useEffect separado para los filtros, que reacciona a los cambios.
-    useEffect(() => {
+        setLoading(true);
         let filtered = [...notifications];
+
         if (searchTerm) {
-            filtered = filtered.filter(n => n.message.toLowerCase().includes(searchTerm.toLowerCase()));
+            // El filtro ahora busca en el mensaje construido
+            filtered = filtered.filter(n => 
+                buildNotificationDescription(n).toLowerCase().includes(searchTerm.toLowerCase())
+            );
         }
         if (filterType !== 'all') {
             filtered = filtered.filter(n => n.type === filterType);
@@ -69,59 +41,10 @@ const NotificationsPage = () => {
         } else if (filterStatus === 'read') {
             filtered = filtered.filter(n => n.is_read);
         }
+        
         setFilteredNotifications(filtered);
+        setLoading(false);
     }, [notifications, searchTerm, filterType, filterStatus]);
-
-  const markAsRead = async (notificationId) => {
-    const result = await updateRecord('notifications', notificationId, {
-      is_read: true
-    });
-
-    if (result.success) {
-      setNotifications(prev => 
-        prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n)
-      );
-
-      toast({
-        title: "Notificación marcada como leída",
-        description: "La notificación ha sido marcada como leída exitosamente."
-      });
-    }
-  };
-
-  const markAsUnread = async (notificationId) => {
-    const result = await updateRecord('notifications', notificationId, {
-      is_read: false
-    });
-
-    if (result.success) {
-      setNotifications(prev => 
-        prev.map(n => n.id === notificationId ? { ...n, is_read: false } : n)
-      );
-
-      toast({
-        title: "Notificación marcada como no leída",
-        description: "La notificación ha sido marcada como no leída exitosamente."
-      });
-    }
-  };
-
-  const markAllAsRead = async () => {
-    const unreadNotifications = notifications.filter(n => !n.is_read);
-    
-    const updatePromises = unreadNotifications.map(notification =>
-      updateRecord('notifications', notification.id, { is_read: true })
-    );
-
-    await Promise.all(updatePromises);
-
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-
-    toast({
-      title: "Todas las notificaciones marcadas como leídas",
-      description: "Se han marcado todas las notificaciones como leídas exitosamente."
-    });
-  };
 
   const getNotificationIcon = (type) => {
     switch (type) {
@@ -290,7 +213,7 @@ const NotificationsPage = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => notification.is_read ? markAsUnread(notification.id) : markAsRead(notification.id)}
+                               onClick={() => updateNotificationStatus(notification.id, !notification.is_read)}
                             >
                               {notification.is_read ? (
                                 <>
@@ -303,9 +226,12 @@ const NotificationsPage = () => {
                                   Marcar como leída
                                 </>
                               )}
-                            </Button>
+                            </Button>            
                           </div>
                         </div>
+                       <p className={`text-sm mb-3 ${!notification.is_read ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                        {buildNotificationDescription(notification)}
+                         </p>
                         <p className={`text-sm mb-3 ${
                           !notification.is_read ? 'font-medium text-foreground' : 'text-muted-foreground'
                         }`}>

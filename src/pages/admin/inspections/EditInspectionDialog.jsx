@@ -142,7 +142,6 @@ export function EditInspectionDialog({ inspection, isOpen, onClose, onUpdateSucc
                 <SelectContent>
                   <SelectItem value="pending_payment">Pago Pendiente</SelectItem>
                   <SelectItem value="scheduled">Programada</SelectItem>
-                  <SelectItem value="on_hold">En Espera</SelectItem>
                   <SelectItem value="completed">Completada</SelectItem>
                   <SelectItem value="cancelled">Cancelada</SelectItem>
                 </SelectContent>
