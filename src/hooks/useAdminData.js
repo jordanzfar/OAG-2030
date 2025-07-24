@@ -126,7 +126,7 @@ export const useAdminData = () => {
         // Usar profile.user_id en lugar de profile.id
         const userIdToSearch = profile.user_id || profile.id;
         
-        console.log(`Buscando documentos para ${profile.full_name} (user_id: ${userIdToSearch})`);
+        //console.log(`Buscando documentos para ${profile.full_name} (user_id: ${userIdToSearch})`);
         
         const { data: documentsData, error: docsError } = await supabase
           .from('documents')
