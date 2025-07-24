@@ -1,17 +1,17 @@
 
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, LayoutDashboard, FileText, SearchCheck, FileBadge, Coins as HandCoins, Banknote, User, UploadCloud, MessageSquare, Bell } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/components/ui/use-toast';
+import {LogOut, LayoutDashboard, FileText, SearchCheck, FileBadge, Coins as HandCoins, Banknote, User,UploadCloud, MessageSquare, Bell, PanelLeft, PanelRight } from 'lucide-react';import { useToast } from '@/components/ui/use-toast';
 import NotificationsWidget from '@/components/dashboard/NotificationsWidget';
 import logo from '@/assets/OPULENT-BRONZE.png';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { useAuth } from '@/hooks/useAuth';
 
 const sidebarNavItems = [
     { title: "Inicio", href: "/dashboard", icon: LayoutDashboard },
@@ -29,6 +29,42 @@ const sidebarNavItems = [
 
 ];
 
+const SidebarNav = ({ isCollapsed }) => {
+    const location = useLocation();
+    return (
+        <nav className="flex flex-col gap-1 px-2">
+            {sidebarNavItems.map((item) => (
+                <Link
+                    key={item.href}
+                    to={item.href}
+                    className={cn(
+                        'flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground',
+                        location.pathname === item.href
+                            ? 'bg-accent text-accent-foreground'
+                            : 'text-muted-foreground',
+                        isCollapsed && 'justify-center' // Centra el ícono cuando está colapsado
+                    )}
+                >
+                    <item.icon className={cn('h-5 w-5', !isCollapsed && 'mr-3')} />
+                    <AnimatePresence>
+                        {!isCollapsed && (
+                            <motion.span
+                                initial={{ opacity: 0, width: 0 }}
+                                animate={{ opacity: 1, width: 'auto' }}
+                                exit={{ opacity: 0, width: 0 }}
+                                transition={{ duration: 0.2, ease: "easeInOut" }}
+                                className="whitespace-nowrap"
+                            >
+                                {item.title}
+                            </motion.span>
+                        )}
+                    </AnimatePresence>
+                </Link>
+            ))}
+        </nav>
+    );
+};
+
 const DashboardLayout = () => {
     const supabase = useSupabaseClient();
     const location = useLocation();
@@ -37,7 +73,25 @@ const DashboardLayout = () => {
     // --- INICIO DE LA CORRECCIÓN 1 ---
     // Ya no necesitamos `logout` de useAuth, ni `signOut` del otro hook. Lo haremos directo.
     const { user, userProfile } = useAuth();
+    // MODIFICADO: El sidebar ahora empieza colapsado por defecto.
+    const [isCollapsed, setIsCollapsed] = useState(true);
+    
+    // NUEVO: Usamos una referencia para manejar el temporizador del retraso.
+    const timerRef = useRef(null);
 
+    // NUEVO: Funciones para manejar el hover con retraso.
+    const handleMouseEnter = () => {
+        if (timerRef.current) {
+            clearTimeout(timerRef.current);
+        }
+        setIsCollapsed(false);
+    };
+
+ const handleMouseLeave = () => {
+        timerRef.current = setTimeout(() => {
+            setIsCollapsed(true);
+        }, 300); // 300ms de retraso antes de colapsar
+    };
 
     // --- FIN DE LA CORRECCIÓN 1 ---
 
@@ -73,21 +127,74 @@ const DashboardLayout = () => {
 
 
     return (
-        <div className="flex min-h-screen flex-col">
-            {/* Header */}
-            <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <div className="container flex h-16 items-center justify-between">
-                    {/* Logo */}
-                    <Link to="/dashboard" className="flex items-center">
-                            <img 
-                                src={logo} 
-                                alt="Opulent Auto Gallery Logo" 
-                                className="h-12" 
-                            />
-                        </Link>
+        <div className="flex min-h-screen w-full flex-col bg-muted/40">
+            {/* INICIO: Sidebar de escritorio (visible en md y superior) */}
+            <motion.aside
+                // NUEVO: Eventos de mouse para controlar el estado
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                
+                // MODIFICADO: Clases para el efecto Glassmorphism
+                className="hidden md:fixed md:inset-y-0 md:z-50 md:flex md:flex-col border-r border-border/20 bg-background/80 backdrop-blur-xl"
+                
+                initial={false}
+                animate={{ width: isCollapsed ? 80 : 240 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+            >
+                {/* El botón ya no controla el estado, solo es un indicador visual */}
+                <div className="flex h-16 items-center justify-between border-b border-border/20 px-4">
+                    <Link to="/dashboard" className="flex items-center gap-2 font-semibold">
+                        {!isCollapsed && <img src={logo} alt="Logo" className="h-10" />}
+                    </Link>
+                    {/* MODIFICADO: El botón ahora es solo un ícono visual */}
+                    <div className="h-9 w-9 flex items-center justify-center">
+                        {isCollapsed ? <PanelRight className="h-5 w-5 text-muted-foreground" /> : <PanelLeft className="h-5 w-5 text-muted-foreground" />}
+                    </div>
+                </div>
+                <ScrollArea className="flex-1 py-4">
+                    <SidebarNav isCollapsed={isCollapsed} />
+                </ScrollArea>
+                <div className="mt-auto border-t border-border/20 p-4">
+                    <Button variant="ghost" className="w-full" onClick={handleLogout}>
+                         <div className={cn('flex items-center', isCollapsed && "justify-center w-full")}>
+                           <LogOut className={cn('h-5 w-5', !isCollapsed && "mr-3")} />
+                           {!isCollapsed && <span className="whitespace-nowrap">Cerrar Sesión</span>}
+                         </div>
+                    </Button>
+                </div>
+            </motion.aside>
+            {/* FIN: Sidebar de escritorio */}
 
-                    {/* Right side: Notifications & User */}
-                    <div className="flex items-center space-x-4">
+            <div className={cn('flex flex-col sm:gap-4 sm:py-4', isCollapsed ? 'md:pl-[80px]' : 'md:pl-[240px]', 'transition-all duration-300 ease-in-out')}>
+                {/* ... El resto de tu layout (header móvil, main content) no necesita cambios ... */}
+                {/* INICIO: Header para móvil */}
+                <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 md:justify-end">
+                    {/* Botón de menú para móvil (Sheet) */}
+                    <Sheet>
+                        <SheetTrigger asChild>
+                            <Button size="icon" variant="outline" className="md:hidden">
+                                <PanelLeft className="h-5 w-5" />
+                                <span className="sr-only">Toggle Menu</span>
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="left" className="p-0 w-64 bg-background/80 backdrop-blur-xl border-r-border/20">
+                             {/* Mostramos el logo y el nombre en el menú móvil */}
+                             <div className="flex h-16 items-center border-b border-border/20 px-4">
+                                <Link to="/dashboard" className="flex items-center gap-2 font-semibold">
+                                    <img src={logo} alt="Logo" className="h-10" />
+                                </Link>
+                             </div>
+                            {/* Reutilizamos la navegación aquí */}
+                            <SidebarNav isCollapsed={false} />
+                        </SheetContent>
+                    </Sheet>
+                    
+                    <Link to="/dashboard" className="flex items-center md:hidden">
+                        <img src={logo} alt="Opulent Logo" className="h-10" />
+                    </Link>
+
+                    {/* Lado derecho: Notificaciones y Usuario */}
+                    <div className="flex items-center space-x-2 md:space-x-4">
                         <NotificationsWidget />
                         <Avatar className="h-8 w-8">
                             <AvatarImage src={userProfile?.avatar_url} alt={userProfile?.full_name || 'Usuario'} />
@@ -95,40 +202,16 @@ const DashboardLayout = () => {
                                 {userProfile?.full_name ? userProfile.full_name.charAt(0).toUpperCase() : 'U'}
                             </AvatarFallback>
                         </Avatar>
-                        <Button variant="ghost" size="icon" onClick={handleLogout}>
-                            <LogOut className="h-5 w-5 text-muted-foreground hover:text-foreground" />
+                        <Button variant="ghost" size="icon" onClick={handleLogout} className='md:hidden'>
+                             <LogOut className="h-5 w-5 text-muted-foreground hover:text-foreground" />
                         </Button>
                     </div>
-                </div>
-            </header>
-
-            <div className="container flex-1 items-start md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10">
-                {/* Sidebar */}
-                <aside className="fixed top-16 z-30 -ml-2 hidden h-[calc(100vh-4rem)] w-full shrink-0 md:sticky md:block">
-                    <ScrollArea className="h-full py-6 pr-6 lg:py-8">
-                        <nav className="flex flex-col space-y-2">
-                            {sidebarNavItems.map((item) => (
-                                <Link
-                                    key={item.href}
-                                    to={item.href}
-                                    className={cn(
-                                        'flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
-                                        location.pathname === item.href
-                                            ? 'bg-accent text-accent-foreground'
-                                            : 'text-muted-foreground',
-                                    )}
-                                >
-                                    <item.icon className="mr-2 h-4 w-4" />
-                                    {item.title}
-                                </Link>
-                            ))}
-                        </nav>
-                    </ScrollArea>
-                </aside>
+                </header>
+                {/* FIN: Header para móvil */}
 
                 {/* Main Content */}
-                <main className="relative py-6 lg:py-8">
-                    <AnimatePresence mode="wait">
+                <main className="flex-1 p-4 sm:px-6 sm:py-0 md:gap-8">
+                     <AnimatePresence mode="wait">
                         <motion.div
                             key={location.pathname}
                             initial={{ opacity: 0, y: 10 }}
