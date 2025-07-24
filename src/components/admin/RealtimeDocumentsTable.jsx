@@ -120,8 +120,9 @@ const RealtimeDocumentsTable = ({ documents, loading, onStatusUpdate }) => {
               >
                 <TableCell>
                   <div>
-                    <div className="font-medium">{doc.client_name}</div>
-                    <div className="text-sm text-muted-foreground">{doc.client_email}</div>
+                    <div className="font-medium">{doc.full_name}</div>
+                    <div className="text-sm text-muted-foreground">{doc.short_id}</div>
+                    <div className="text-sm text-muted-foreground">{doc.email}</div>
                   </div>
                 </TableCell>
                 <TableCell>

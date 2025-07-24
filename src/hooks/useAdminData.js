@@ -110,45 +110,60 @@ export const useAdminData = () => {
     // --- Funciones para Gestión de Usuarios y Verificación (KYC) ---
 
     const fetchAllUsers = useCallback(async () => {
-        setLoading(true);
-        try {
-            const { data: profiles, error: profilesError } = await supabase
-                .from('users_profile')
-                .select('*')
-                .order('created_at', { ascending: false });
+  setLoading(true);
+  try {
+    // 1. Obtener perfiles de usuario
+    const { data: profiles, error: profilesError } = await supabase
+      .from('users_profile')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-            if (profilesError) throw profilesError;
+    if (profilesError) throw profilesError;
 
-            const usersWithDocs = await Promise.all(
-                profiles.map(async (profile) => {
-                    const { data: documentsData, error: docsError } = await supabase
-                        .from('documents')
-                        .select('id, file_path, status, rejection_reason')
-                        .eq('user_id', profile.id)
-                        .or('file_path.like.%/id_front/%,file_path.like.%/id_back/%,file_path.like.%/selfie/%');
+    // 2. Para cada perfil, obtener sus documentos usando user_id correcto
+    const usersWithDocs = await Promise.all(
+      profiles.map(async (profile) => {
+        // Usar profile.user_id en lugar de profile.id
+        const userIdToSearch = profile.user_id || profile.id;
+        
+        console.log(`Buscando documentos para ${profile.full_name} (user_id: ${userIdToSearch})`);
+        
+        const { data: documentsData, error: docsError } = await supabase
+          .from('documents')
+          .select('id, file_path, status, rejection_reason, document_type')
+          .eq('user_id', userIdToSearch)  // Usamos el user_id correcto aquí
+          .in('document_type', ['id_front', 'id_back', 'selfie']);
 
-                    let documents = [];
-                    if (!docsError && documentsData) {
-                        documents = documentsData.map(doc => {
-                            const BUCKET_NAME = 'kycdocuments';
-                            const { data: { publicUrl } } = supabase.storage.from(BUCKET_NAME).getPublicUrl(doc.file_path);
-                            const type = doc.file_path.includes('id_front') ? 'id_front' : doc.file_path.includes('id_back') ? 'id_back' : 'selfie';
-                            return { ...doc, url: publicUrl, type };
-                        });
-                    }
+        if (docsError) console.error('Error documentos:', docsError);
 
-                    return { ...profile, documents };
-                })
-            );
-            return { success: true, data: usersWithDocs, error: null };
-        } catch (error) {
-            console.error('Error crítico en fetchAllUsers:', error);
-            toast({ variant: "destructive", title: "❌ Error al cargar usuarios", description: error.message });
-            return { success: false, error, data: [] };
-        } finally {
-            setLoading(false);
-        }
-    }, [supabase, toast]);
+        console.log(`Documentos encontrados para ${userIdToSearch}:`, documentsData);
+
+        // Procesar URLs de documentos
+        const documents = documentsData?.map(doc => {
+          const cleanPath = doc.file_path.replace(/^kycdocuments\//, '');
+          const { data: { publicUrl } } = supabase.storage
+            .from('kycdocuments')
+            .getPublicUrl(cleanPath);
+
+          return {
+            ...doc,
+            url: publicUrl,
+            type: doc.document_type
+          };
+        }) || [];
+
+        return { ...profile, documents };
+      })
+    );
+
+    return { success: true, data: usersWithDocs, error: null };
+  } catch (error) {
+    console.error('Error en fetchAllUsers:', error);
+    return { success: false, error, data: [] };
+  } finally {
+    setLoading(false);
+  }
+}, [supabase]);
 
     const updateUserVerification = useCallback(async (userId, verificationStatus) => {
         setLoading(true);
@@ -229,15 +244,15 @@ export const useAdminData = () => {
     }, [supabase]);
 
     const getDocumentDownloadUrl = useCallback(async (filePath, bucketName = 'kycdocuments') => {
-        try {
-            const { data, error } = await supabase.storage.from(bucketName).createSignedUrl(filePath, 60 * 5); // 5 minutes validity
-            if (error) throw error;
-            return { success: true, url: data.signedUrl };
-        } catch(error) {
-            console.error('Error creating signed URL:', error);
-            return { success: false, url: null, error };
-        }
-    }, [supabase]);
+  try {
+    // Obtener URL pública directamente (sin firma)
+    const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+    return { success: true, url: publicUrl };
+  } catch(error) {
+    console.error('Error getting document URL:', error);
+    return { success: false, url: null, error };
+  }
+}, [supabase]);
 
   const fetchAllDeposits = useCallback(async () => {
         setLoading(true);

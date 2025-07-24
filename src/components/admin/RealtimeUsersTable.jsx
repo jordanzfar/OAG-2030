@@ -35,6 +35,7 @@ const DocumentItem = ({ doc, onView, onApprove, onReject, isUpdating }) => {
         }[status] || { icon: Info, color: 'text-gray-700', label: 'N/A' };
         const Icon = config.icon;
         return <span className={`flex items-center text-xs font-medium ${config.color}`}><Icon className="w-3 h-3 mr-1.5" />{config.label}</span>;
+
     };
 
     return (
@@ -110,6 +111,8 @@ const RealtimeUsersTable = ({ users, loading, onVerificationUpdate, onDocumentVi
 
     useEffect(() => {
         if (isDetailsModalOpen && selectedUser) {
+    console.log('Usuario seleccionado:', selectedUser);
+    console.log('Documentos del usuario:', selectedUser.documents);
             const loadCounts = async () => {
                 setIsLoadingCounts(true);
                 try {
@@ -170,14 +173,12 @@ const RealtimeUsersTable = ({ users, loading, onVerificationUpdate, onDocumentVi
     
 
     const handleDocumentView = async (doc) => {
-        if (!onDocumentViewRequest) return;
-        const result = await onDocumentViewRequest(doc.file_path);
-        if (result.success && result.url) {
-            window.open(result.url, '_blank', 'noopener,noreferrer');
-        } else {
-            toast({ variant: "destructive", title: "No se pudo abrir el documento", description: result?.error?.message || "Error al generar el enlace." });
-        }
-    };
+  if (!doc.url) {
+    toast({ variant: "destructive", title: "Error", description: "No hay URL disponible para este documento" });
+    return;
+  }
+  window.open(doc.url, '_blank', 'noopener,noreferrer');
+};
 
     const handleApproveDocument = async (doc) => {
         setUpdatingDocId(doc.id);
@@ -200,6 +201,7 @@ const RealtimeUsersTable = ({ users, loading, onVerificationUpdate, onDocumentVi
         setDocToReject(null);
         setRejectionReason("");
     };
+
 
     if (loading && users.length === 0) {
         return (
