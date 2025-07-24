@@ -1,27 +1,13 @@
-"use client";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, AlertTriangle } from "lucide-react";
-
-const getStatusBadgeVariant = (status) => {
-  switch (status?.toLowerCase()) {
-    case 'approved':
-      return 'success';
-    case 'rejected':
-      return 'destructive';
-    case 'in_review':
-      return 'secondary';
-    case 'pending':
-    default:
-      return 'outline';
-  }
-};
+import { StatusBadge } from '@/components/ui/StatusBadge'; // Importamos nuestro badge
 
 export const columns = [
   {
-     accessorKey: "short_id",
+    accessorKey: "short_id",
     header: "Usuario",
   },
   {
@@ -33,11 +19,7 @@ export const columns = [
     header: "Estado",
     cell: ({ row }) => {
       const status = row.getValue("status");
-      return (
-        <Badge variant={getStatusBadgeVariant(status)}>
-          {status}
-        </Badge>
-      );
+      return <StatusBadge status={status} />;
     },
   },
   {
@@ -61,7 +43,7 @@ export const columns = [
     header: "Fecha de Solicitud",
     cell: ({ row }) => {
       const date = new Date(row.getValue("created_at"));
-      return <div>{date.toLocaleDateString()}</div>;
+      return <div>{date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</div>;
     },
   },
   {

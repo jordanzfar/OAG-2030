@@ -3,29 +3,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { Loader2 } from 'lucide-react';
 import { columns } from './columns';
-import { DataTable } from '../inspections/data-table'; // La ruta a nuestro componente reutilizable
-import { ViewBidSheet } from './ViewBidSheet';
+import { DataTable } from '../inspections/data-table';
+import { ViewBidDialog } from './ViewBidDialog'; // <-- Usamos el nuevo Dialog
 
 const AdminAuctionBidsPage = () => {
   const [bids, setBids] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedBid, setSelectedBid] = useState(null);
-const supabase = useSupabaseClient();
-  // Definimos las opciones para el menú desplegable de estados
-  const statusOptions = [
+  const supabase = useSupabaseClient();
+  
+   const statusOptions = [
     { value: 'pending', label: 'Pendiente' },
-    { value: 'processed', label: 'Procesada' },
+    { value: 'approved', label: 'Aprobada' },
+    { value: 'processing', label: 'Procesando' },
     { value: 'won', label: 'Ganada' },
-    { value: 'outbid', label: 'Superada' },
     { value: 'lost', label: 'Perdida' },
-    { value: 'cancelled', label: 'Cancelada' },
+    { value: 'pending_payment', label: 'Pendiente de Pago' },
+    { value: 'completed', label: 'Completada' },
   ];
 
   const loadBids = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('auction_bids')
-      .select(`*, user_profile:users_profile ( full_name, email )`)
+      .select(`*, user_profile:users_profile ( full_name, email, short_id )`)
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -40,13 +41,13 @@ const supabase = useSupabaseClient();
       setBids(formattedData);
     }
     setLoading(false);
-  }, []);
+  }, [supabase]);
 
   useEffect(() => { loadBids(); }, [loadBids]);
 
   const handleViewDetails = (bid) => setSelectedBid(bid);
-  const handleCloseSheet = () => setSelectedBid(null);
-  const handleUpdateSuccess = () => { handleCloseSheet(); loadBids(); };
+  const handleCloseDialog = () => setSelectedBid(null);
+  const handleUpdateSuccess = () => { handleCloseDialog(); loadBids(); };
 
   return (
     <div className="container mx-auto py-10">
@@ -61,13 +62,20 @@ const supabase = useSupabaseClient();
             <DataTable 
               columns={columns({ onViewDetails: handleViewDetails })} 
               data={bids}
-              filterColumn="lot_number" // Columna para el filtro de texto
-              statusOptions={statusOptions} // Opciones para el filtro de estado
+              filterColumn="lot_number"
+              statusOptions={statusOptions}
             /> 
           )}
         </CardContent>
       </Card>
-      <ViewBidSheet bid={selectedBid} isOpen={!!selectedBid} onClose={handleCloseSheet} onUpdateSuccess={handleUpdateSuccess} />
+      
+      {/* Usamos el nuevo Dialog en lugar del Sheet */}
+      <ViewBidDialog 
+        bid={selectedBid} 
+        isOpen={!!selectedBid} 
+        onClose={handleCloseDialog} 
+        onUpdateSuccess={handleUpdateSuccess} 
+      />
     </div>
   );
 };

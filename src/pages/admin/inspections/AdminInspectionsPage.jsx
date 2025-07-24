@@ -3,10 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Loader2 } from 'lucide-react';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
 
-; // Asegúrate que esta ruta sea la correcta
 import { columns } from './columns';
 import { DataTable } from './data-table';
-import { EditInspectionSheet } from './EditInspectionSheet';
+import { EditInspectionDialog } from './EditInspectionDialog'; // <-- CAMBIO: Importamos el nuevo Dialog
 
 const AdminInspectionsPage = () => {
   const supabase = useSupabaseClient();
@@ -14,34 +13,28 @@ const AdminInspectionsPage = () => {
   const [loading, setLoading] = useState(true);
   const [editingInspection, setEditingInspection] = useState(null);
 
- // Reemplaza SOLO esta función dentro de AdminInspectionsPage.jsx
-const loadInspections = useCallback(async () => {
-  setLoading(true);
+  const loadInspections = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.functions.invoke('inspections-proxy');
 
-  // Invocamos la Edge Function
-  const { data, error } = await supabase.functions.invoke('inspections-proxy');
-
-  if (error) {
-    // CAMBIO CLAVE: Extraemos y mostramos el error detallado del cuerpo de la respuesta
-    try {
-      const errorDetails = await error.context.json();
-      console.error("‼️ ERROR DETALLADO DESDE LA EDGE FUNCTION:", errorDetails);
-    } catch (e) {
-      console.error("Error al invocar la Edge Function (no se pudo leer el detalle):", error.message);
+    if (error) {
+      try {
+        const errorDetails = await error.context.json();
+        console.error("‼️ ERROR DETALLADO DESDE LA EDGE FUNCTION:", errorDetails);
+      } catch (e) {
+        console.error("Error al invocar la Edge Function:", error.message);
+      }
+      setInspections([]);
+    } else {
+      const formattedData = data.map(item => ({
+        ...item,
+        user_full_name: item.users_profile?.full_name || 'N/A',
+        user_email: item.users_profile?.email || 'N/A',
+      }));
+      setInspections(formattedData);
     }
-    setInspections([]);
-
-  } else {
-    // Esta parte está bien y no necesita cambios
-    const formattedData = data.map(item => ({
-      ...item,
-      user_full_name: item.users_profile?.full_name || 'N/A',
-      user_email: item.users_profile?.email || 'N/A',
-    }));
-    setInspections(formattedData);
-  }
-  setLoading(false);
-}, []);
+    setLoading(false);
+  }, [supabase]);
 
   useEffect(() => {
     loadInspections();
@@ -51,12 +44,12 @@ const loadInspections = useCallback(async () => {
     setEditingInspection(inspection);
   };
 
-  const handleCloseSheet = () => {
+  const handleCloseDialog = () => {
     setEditingInspection(null);
   };
 
   const handleUpdateSuccess = () => {
-    handleCloseSheet();
+    handleCloseDialog();
     loadInspections();
   };
 
@@ -83,11 +76,13 @@ const loadInspections = useCallback(async () => {
           )}
         </CardContent>
       </Card>
-
-      <EditInspectionSheet
+      
+      {/* --- CAMBIO CLAVE --- */}
+      {/* Reemplazamos el Sheet por el nuevo Dialog */}
+      <EditInspectionDialog
         inspection={editingInspection}
         isOpen={!!editingInspection}
-        onClose={handleCloseSheet}
+        onClose={handleCloseDialog}
         onUpdateSuccess={handleUpdateSuccess}
       />
     </div>

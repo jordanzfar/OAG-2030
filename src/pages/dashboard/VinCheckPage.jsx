@@ -1,6 +1,4 @@
-// ✅ INICIO DE CAMBIOS: Se añade 'useEffect' a la importación
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-// ✅ FIN DE CAMBIOS
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -18,12 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Info, AlertTriangle, CheckCircle, Clock, Download, Search, Loader2, Check, X, ArrowLeft, ArrowRight } from 'lucide-react';
 
-// ... (El resto del archivo no necesita cambios)
-// ... (VinCheckForm, HistoryItem, VinHistoryList, VinCheckPage)
 
-// (Pega este código completo en tu archivo para asegurar que todo esté correcto)
-
-// --- Sub-componente del Formulario ---
 const vinSchema = z.object({
   vin: z.string().length(17, "El VIN debe tener 17 caracteres.").regex(/^[a-zA-Z0-9]+$/, "Solo caracteres alfanuméricos."),
 });

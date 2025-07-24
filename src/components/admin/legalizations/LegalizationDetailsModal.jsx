@@ -10,8 +10,7 @@ import { useAdminData } from '@/hooks/useAdminData';
 import { useAdminActions } from '@/hooks/useAdminActions';
 import { Download, Loader2, Save } from 'lucide-react';
 
-// ✅ --- INICIO: DocumentCard MODIFICADO --- ✅
-// Este componente ahora muestra un <iframe> para PDFs.
+// DocumentCard sub-component
 const DocumentCard = ({ doc, onStatusChange, onSaveStatus, onViewOrDownload }) => (
   <div className="space-y-4 pt-2">
     {doc.previewUrl ? (
@@ -33,7 +32,7 @@ const DocumentCard = ({ doc, onStatusChange, onSaveStatus, onViewOrDownload }) =
       </>
     ) : (
       <div className="text-center p-8 bg-muted rounded-md">
-        <p className="text-muted-foreground">Vista previa no disponible para este tipo de archivo.</p>
+        <p className="text-muted-foreground">Vista previa no disponible.</p>
       </div>
     )}
     <div className="flex items-center justify-between gap-2 p-2 border rounded-lg">
@@ -57,7 +56,7 @@ const DocumentCard = ({ doc, onStatusChange, onSaveStatus, onViewOrDownload }) =
     </div>
   </div>
 );
-// ✅ --- FIN: DocumentCard MODIFICADO --- ✅
+
 
 // Componente Principal del Modal
 export function LegalizationDetailsModal({ isOpen, onClose, legalization, onUpdate }) {
@@ -66,6 +65,8 @@ export function LegalizationDetailsModal({ isOpen, onClose, legalization, onUpda
   
   const [mainStatus, setMainStatus] = useState('');
   const [adminNotes, setAdminNotes] = useState('');
+  const [missingInfoDetails, setMissingInfoDetails] = useState('');
+  
   const [documents, setDocuments] = useState([]);
   const [isFetchingDocs, setIsFetchingDocs] = useState(false);
   const [documentStatusFilter, setDocumentStatusFilter] = useState('all');
@@ -75,6 +76,7 @@ export function LegalizationDetailsModal({ isOpen, onClose, legalization, onUpda
     if (isOpen && legalization) {
       setMainStatus(legalization.status || 'pending');
       setAdminNotes(legalization.admin_notes || '');
+      setMissingInfoDetails(legalization.missing_information_details || '');
       setDocumentStatusFilter('all'); 
 
       const fetchDocs = async () => {
@@ -84,13 +86,10 @@ export function LegalizationDetailsModal({ isOpen, onClose, legalization, onUpda
         if (result.success && result.data) {
           const BUCKET_LEGALIZACIONES = 'documents';
           const docsWithUrls = await Promise.all(result.data.map(async (doc) => {
-            // ✅ --- INICIO: LÓGICA MODIFICADA --- ✅
-            // Ahora la condición incluye imágenes y PDFs.
             if (doc.mime_type?.startsWith('image/') || doc.mime_type === 'application/pdf') {
               const urlResult = await getDocumentDownloadUrl(doc.file_path, BUCKET_LEGALIZACIONES);
               return { ...doc, previewUrl: urlResult.success ? urlResult.url : null };
             }
-            // ✅ --- FIN: LÓGICA MODIFICADA --- ✅
             return doc;
           }));
           setDocuments(docsWithUrls);
@@ -125,10 +124,17 @@ export function LegalizationDetailsModal({ isOpen, onClose, legalization, onUpda
   const handleSaveDocumentStatus = async (docId, newStatus) => {
     await updateDocumentStatus(docId, newStatus);
   };
-
+  
   const handleSaveChanges = async () => {
     if (!legalization) return;
-    const result = await updateLegalization(legalization.id, { status: mainStatus, admin_notes: adminNotes });
+
+    const payload = {
+      status: mainStatus,
+      admin_notes: adminNotes,
+      missing_information_details: mainStatus === 'missing_information' ? missingInfoDetails : null
+    };
+    
+    const result = await updateLegalization(legalization.id, payload);
     if (result.success) {
       onUpdate();
       onClose();
@@ -142,11 +148,11 @@ export function LegalizationDetailsModal({ isOpen, onClose, legalization, onUpda
       <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>Detalles de la Solicitud</DialogTitle>
-          <DialogDescription>VIN: {legalization.vin} - Solicitado por: {legalization.user_email || 'N/A'}</DialogDescription>
+          <DialogDescription>VIN: {legalization.vin} - Solicitado por: {legalization.user_profile?.email || 'N/A'}</DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4 max-h-[75vh] overflow-y-auto pr-4">
           
-          {/* --- Columna Izquierda: Información y Acciones --- */}
+          {/* Columna Izquierda: Información y Acciones */}
           <div className="space-y-6">
             <Card>
               <CardHeader><CardTitle className="text-lg">Información General</CardTitle></CardHeader>
@@ -164,21 +170,35 @@ export function LegalizationDetailsModal({ isOpen, onClose, legalization, onUpda
                     <SelectTrigger id="status"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pending">Pendiente</SelectItem>
-                      <SelectItem value="in_review">En Revisión</SelectItem>
-                      <SelectItem value="approved">Aprobado</SelectItem>
-                      <SelectItem value="rejected">Rechazado</SelectItem>
+                      <SelectItem value="missing_documents">Documentos faltantes</SelectItem>
+                      <SelectItem value="missing_information">Información faltante</SelectItem>
+                      <SelectItem value="deposit_required">Depósito requerido</SelectItem>
+                      <SelectItem value="processing">Procesando</SelectItem>
+                      <SelectItem value="final_payment_required">Pago final requerido</SelectItem>
+                      <SelectItem value="completed">Completado</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+                {mainStatus === 'missing_information' && (
+                  <div>
+                    <Label htmlFor="missing-info-details">Detallar Información Faltante</Label>
+                    <Textarea
+                      id="missing-info-details"
+                      placeholder="Ej: Falta el número de licencia, la dirección del propietario es incorrecta..."
+                      value={missingInfoDetails}
+                      onChange={(e) => setMissingInfoDetails(e.target.value)}
+                    />
+                  </div>
+                )}
                 <div>
-                  <Label htmlFor="admin-notes">Notas Internas</Label>
+                  <Label htmlFor="admin-notes">Notas Internas (visibles solo para administradores)</Label>
                   <Textarea id="admin-notes" value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} />
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* --- Columna Derecha: Pestañas de Documentos --- */}
+          {/* Columna Derecha: Pestañas de Documentos */}
           <div className="space-y-4">
               <Card className="h-full">
                 <CardHeader><CardTitle className="text-lg">Documentos Adjuntos</CardTitle></CardHeader>

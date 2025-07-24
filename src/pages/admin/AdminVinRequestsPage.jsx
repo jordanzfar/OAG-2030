@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { useAdminVinRequests } from '@/hooks/useAdminVinRequests';
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { MoreHorizontal, UploadCloud } from 'lucide-react';
+import { StatusBadge } from '@/components/ui/StatusBadge'; // Asumiendo esta ruta. Ajusta si es necesario.
 
 // --- Sub-Componentes (Diálogo y Acciones) no necesitan cambios ---
 const UploadReportDialog = ({ isOpen, onOpenChange, onSubmit, request }) => {
@@ -55,10 +55,10 @@ const RequestActions = ({ request, onUpdateStatus, onUpload }) => {
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => onUpdateStatus(request.id, 'processing')} disabled={request.status === 'processing'}>
+        <DropdownMenuItem onClick={() => onUpdateStatus(request.id, 'processing')} disabled={request.status === 'processing' || request.status === 'completed'}>
           Marcar como Procesando
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onUpload(request)}>
+        <DropdownMenuItem onClick={() => onUpload(request)} disabled={request.status === 'completed'}>
           <UploadCloud className="mr-2 h-4 w-4" />
           Subir Reporte
         </DropdownMenuItem>
@@ -82,7 +82,7 @@ const AdminVinRequestsPage = () => {
     if (!filter) return allRequests;
     return allRequests.filter(req =>
       (req.vin && req.vin.toLowerCase().includes(filter.toLowerCase())) ||
-      (req.user_full_name && req.user_full_name.toLowerCase().includes(filter.toLowerCase()))
+      (req.users_profile?.full_name && req.users_profile.full_name.toLowerCase().includes(filter.toLowerCase()))
     );
   }, [allRequests, filter]);
 
@@ -97,16 +97,26 @@ const AdminVinRequestsPage = () => {
     setSelectedRequest(request);
     setIsUploadDialogOpen(true);
   };
-
-  const getStatusVariant = (status) => {
-    if (status === 'completed') return 'success';
-    if (status === 'processing') return 'default';
-    if (status === 'pending') return 'secondary';
-    return 'destructive';
-  };
+  
+  // Ya no necesitamos la función getStatusVariant
   
   if (isLoading) {
-    // ... (código del loader sin cambios)
+    return (
+        <div className="space-y-6">
+            <div className="space-y-1">
+                <Skeleton className="h-9 w-72" />
+                <Skeleton className="h-5 w-96" />
+            </div>
+            <Card>
+                <CardContent className="p-6 space-y-4">
+                    <Skeleton className="h-10 w-80" />
+                    <div className="space-y-2">
+                        {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
   }
 
   return (
@@ -116,7 +126,6 @@ const AdminVinRequestsPage = () => {
         <p className="text-muted-foreground">Gestiona y actualiza el estado de las verificaciones solicitadas.</p>
       </div>
 
-      {/* ✅ INICIO DE CAMBIOS: Card principal que envuelve todo */}
       <Card>
         <CardContent className="p-6 space-y-4">
           <Input
@@ -146,12 +155,20 @@ const AdminVinRequestsPage = () => {
                     paginatedRequests.map((request) => (
                       <TableRow key={request.id}>
                         <TableCell className="pl-6 font-mono font-medium">{request.vin}</TableCell>
-                        <TableCell>{request.user_full_name || 'N/A'}</TableCell>
+                        <TableCell>
+                          {/* ESTILO DE CELDA DE USUARIO ACTUALIZADO */}
+                          <div className="flex flex-col">
+                            <span className="font-medium">{request.users_profile?.full_name || 'Sin Nombre'}</span>
+                            <span className="text-xs text-muted-foreground font-mono">{request.users_profile?.short_id || 'N/A'}</span>
+                            <span className="text-xs text-muted-foreground">{request.users_profile?.email || 'N/A'}</span>
+                          </div>
+                        </TableCell>
                         <TableCell>
                           {new Date(request.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={getStatusVariant(request.status)} className="capitalize">{request.status}</Badge>
+                          {/* BADGE DE ESTADO ACTUALIZADO */}
+                          <StatusBadge status={request.status} />
                         </TableCell>
                         <TableCell className="text-right pr-6">
                           <RequestActions request={request} onUpdateStatus={updateRequestStatus} onUpload={handleUploadClick} />
@@ -195,7 +212,6 @@ const AdminVinRequestsPage = () => {
           )}
         </CardContent>
       </Card>
-      {/* ✅ FIN DE CAMBIOS */}
 
       {selectedRequest && (
         <UploadReportDialog
