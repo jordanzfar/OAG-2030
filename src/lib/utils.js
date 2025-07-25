@@ -36,6 +36,7 @@ const NOTIFICATION_ICON_MAP = {
 
 
   // Tipos de notificación que no tienen 'status'
+  new_chat_message: 'message-square', // <-- AÑADIDO
   new_deposit_request: 'upload', // <-- AÑADIDO
   new_legalization_request: 'file-plus-2',
   new_power_buying_request: 'trending-up', 
@@ -52,6 +53,7 @@ const NOTIFICATION_ICON_MAP = {
 
 const NOTIFICATION_COLOR_MAP = {
   // Estados y Tipos con colores específicos
+  new_chat_message: 'text-blue-500', // <-- AÑADIDO
   pending: 'text-yellow-500',         
   processing: 'text-blue-500',
   active: 'text-green-500',
@@ -73,6 +75,7 @@ const NOTIFICATION_COLOR_MAP = {
 };
 
 const NOTIFICATION_CATEGORY_MAP = {
+  'new_chat_message': 'Mensajes', // <-- AÑADIDO
   'new_document_upload': 'Documentos',
   'document_status_update': 'Documentos',
   'new_deposit_request': 'Depósitos',

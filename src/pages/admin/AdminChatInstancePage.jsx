@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { useDebouncedCallback } from 'use-debounce';
+import TextareaAutosize from 'react-textarea-autosize'; 
 
 const ChatMessageFile = ({ filePath, fileType }) => {
     const supabase = useSupabaseClient();
@@ -40,7 +41,7 @@ const ChatMessageFile = ({ filePath, fileType }) => {
 const AdminChatInstancePage = () => {
     const { clientId } = useParams();
     const { user } = useSupabaseAuth();
-    const { sendAdminMessage, updateChatStatus } = useAdminData();
+    const { updateChatStatus } = useAdminData();
     const { toast } = useToast();
     const supabase = useSupabaseClient();
     
@@ -63,6 +64,22 @@ const AdminChatInstancePage = () => {
     const fileInputRef = useRef(null);
     const textInputRef = useRef(null);
     const typingTimeoutRef = useRef(null);
+
+    useEffect(() => {
+    const fetchQuickReplies = async () => {
+        const { data, error } = await supabase.from('quick_replies').select('shortcut, content');
+        if (error) {
+            console.error("Error al cargar respuestas rápidas:", error);
+            toast({ variant: "destructive", title: "Error", description: "No se pudieron cargar las respuestas rápidas." });
+        } else {
+            setQuickReplies(data || []);
+        }
+    };
+    // Asegúrate de que el usuario esté autenticado para no hacer llamadas innecesarias
+    if (user) {
+        fetchQuickReplies();
+    }
+}, [user, supabase, toast]);
 
     const scrollToBottom = useCallback(() => {
         const scrollViewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
@@ -88,6 +105,15 @@ const AdminChatInstancePage = () => {
             if (convError) throw convError;
             setConversation(convData);
             
+            if (convData.status === 'pendiente') {
+                // Llamamos a la función del hook. No necesitamos esperar (fire-and-forget)
+                updateChatStatus(convData.id, 'en revisión');
+                // Actualizamos el estado local inmediatamente para que la UI sea instantánea
+                setConversation({ ...convData, status: 'en revisión' });
+            } else {
+                setConversation(convData);
+            }
+
             const { data: messagesData, error: messagesError } = await supabase.from('chat_messages').select('*').eq('conversation_id', convData.id).order('created_at');
             if (messagesError) throw messagesError;
             setMessages(messagesData || []);
@@ -108,9 +134,11 @@ const AdminChatInstancePage = () => {
     }, [clientId, user, loadChatData]);
     
     const handleNewMessage = useCallback((payload) => {
-        setMessages((prev) => [...prev, payload.new]);
-        scrollToBottom();
-    }, [scrollToBottom]);
+        if (payload.new.sender_id === clientId) {
+            setMessages((prev) => [...prev, payload.new]);
+            scrollToBottom();
+        }
+    }, [clientId, scrollToBottom]);
 
     const debouncedTyping = useDebouncedCallback(() => {
         if (!clientId) return;
@@ -159,12 +187,18 @@ const AdminChatInstancePage = () => {
 
     const fetchHistoryMessages = async (conversationId) => {
         setIsLoadingHistory(true);
-        const { data, error } = await supabase.from('chat_messages').select('*').eq('conversation_id', conversationId).order('created_at');
+        // AHORA HACEMOS UNA CONSULTA DIRECTA Y SIMPLE
+        const { data, error } = await supabase
+            .from('chat_messages')
+            .select('*')
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: true });
+
         if (error) {
             toast({ variant: 'destructive', title: 'Error', description: 'No se pudieron cargar los mensajes del historial.' });
             setHistoryMessages([]);
         } else {
-            setHistoryMessages(data);
+            setHistoryMessages(data || []);
         }
         setIsLoadingHistory(false);
     };
@@ -184,15 +218,50 @@ const AdminChatInstancePage = () => {
         e.preventDefault();
         if ((!newMessage.trim() && !fileToSend) || isSending || !clientProfile || !conversation) return;
         setIsSending(true);
-        const { data: sentMessage, error } = await sendAdminMessage(clientProfile.user_id, newMessage.trim(), fileToSend, conversation.id);
-        setIsSending(false);
-        if (sentMessage && !error) {
-            setMessages(prevMessages => [...prevMessages, sentMessage]);
-            setNewMessage('');
-            clearFileSelection();
-            scrollToBottom();
-        } else {
-            toast({ variant: 'destructive', title: 'Error al enviar', description: error?.message });
+        const tempId = `temp_${Date.now()}`;
+        const tempMessage = {
+            id: tempId,
+            conversation_id: conversation.id,
+            sender_id: user.id,
+            receiver_id: clientProfile.user_id,
+            content: newMessage.trim(),
+            created_at: new Date().toISOString(),
+            file_path: null, file_type: null,
+        };
+        setMessages(prev => [...prev, tempMessage]);
+        const messageContentForRollback = newMessage;
+        setNewMessage('');
+        const fileForRollback = fileToSend;
+        clearFileSelection();
+        scrollToBottom();
+        try {
+            let filePath = null, fileType = null;
+            if (fileForRollback) {
+                const uniquePath = `${user.id}/${Date.now()}_${fileForRollback.name}`;
+                const { error: uploadError } = await supabase.storage.from('chatdocuments').upload(uniquePath, fileForRollback);
+                if (uploadError) throw uploadError;
+                filePath = uniquePath;
+                fileType = fileForRollback.type;
+            }
+            const messageToInsert = {
+                conversation_id: conversation.id,
+                sender_id: user.id,
+                receiver_id: clientProfile.user_id,
+                content: tempMessage.content,
+                file_path: filePath,
+                file_type: fileType,
+            };
+            const { data: insertedMessage, error } = await supabase.from('chat_messages').insert(messageToInsert).select().single();
+            if (error) throw error;
+            setMessages(prev => prev.map(m => (m.id === tempId ? insertedMessage : m)));
+        } catch (error) {
+            console.error("Error al enviar mensaje:", error);
+            toast({ variant: "destructive", title: "Error de Envío", description: "El mensaje no pudo ser enviado." });
+            setMessages(prev => prev.filter(m => m.id !== tempId));
+            setNewMessage(messageContentForRollback);
+            setFileToSend(fileForRollback);
+        } finally {
+            setIsSending(false);
         }
     };
     
@@ -257,7 +326,10 @@ const AdminChatInstancePage = () => {
                                         <ScrollArea className="h-96 p-4 border rounded-md">
                                             {historyMessages.map(msg => (
                                                 <div key={msg.id} className={`flex my-2 ${msg.sender_id === clientProfile.user_id ? 'justify-start' : 'justify-end'}`}>
-                                                    <div className={`max-w-[85%] p-2 rounded-lg text-sm ${msg.sender_id === clientProfile.user_id ? 'bg-secondary' : 'bg-primary text-primary-foreground'}`}>{msg.content}</div>
+                                                    <div className={`max-w-[85%] p-2 rounded-lg text-sm ${msg.sender_id === clientProfile.user_id ? 'bg-secondary' : 'bg-primary text-primary-foreground'}`}>
+                                                        <p className="font-bold text-xs mb-1">{msg.sender_id === clientProfile.user_id ? clientProfile.full_name : 'Soporte'}</p>
+                                                        {msg.content}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </ScrollArea>
@@ -282,7 +354,6 @@ const AdminChatInstancePage = () => {
                         <SelectContent>
                             <SelectItem value="pendiente">Pendiente</SelectItem>
                             <SelectItem value="en revisión">En Revisión</SelectItem>
-                            <SelectItem value="leído">Leído</SelectItem>
                             <SelectItem value="solucionado">Solucionado</SelectItem>
                             <SelectItem value="cerrada">Cerrada</SelectItem>
                         </SelectContent>
@@ -323,10 +394,25 @@ const AdminChatInstancePage = () => {
                             </motion.div>
                         )}
                     </AnimatePresence>
-                    <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
+                    <form onSubmit={handleSendMessage} className="flex items-start space-x-2"> {/* <-- Cambiado a items-start para alinear con el textarea */}
                         <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*,application/pdf" />
                         <Button type="button" variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isSending}><Paperclip className="w-5 h-5"/></Button>
-                        <Input ref={textInputRef} placeholder="Escribe tu respuesta..." value={newMessage} onChange={handleInputChange} className="flex-grow" disabled={isSending} autoComplete="off"/>
+                        <TextareaAutosize
+                            ref={textInputRef}
+                            placeholder="Escribe tu respuesta..."
+                            value={newMessage}
+                            onChange={handleInputChange}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSendMessage(e);
+        }
+    }}
+    maxRows={6}
+    className="flex-grow resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    disabled={isSending}
+    autoComplete="off"
+/>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button type="button" variant="ghost" size="icon" id="close-popover-button"><MessageSquarePlus className="w-5 h-5 text-muted-foreground" /></Button>

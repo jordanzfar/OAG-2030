@@ -51,26 +51,46 @@ const AdminChatListPage = () => {
     useEffect(() => {
         if (!user) return;
 
-        const handleChatUpdate = (payload) => {
-            const updatedChat = payload.payload;
-            if (updatedChat && updatedChat.agent_id === user.id) {
-                setChats(currentChats => {
-                    const otherChats = currentChats.filter(c => c.client_id !== updatedChat.client_id);
-                    const newChatList = [updatedChat, ...otherChats];
-                    // Aplicamos el filtro de duplicados también en la actualización en tiempo real
-                    return getUniqueChats(newChatList);
-                });
-            }
+        const handleRealtimeUpdate = (payload) => {
+            console.log('Realtime update detected, reloading chats:', payload);
+            loadChats();
         };
 
-        const channel = supabase.channel('admin_chat_list_update')
-            .on('broadcast', { event: '*' }, handleChatUpdate)
+        // Suscripción a cambios en CONVERSACIONES (nuevos chats, cambios de estado)
+        const conversationsSubscription = supabase
+            .channel('public:chat_conversations:admin')
+            .on(
+                'postgres_changes',
+                { 
+                    event: '*', // Escucha INSERT y UPDATE
+                    schema: 'public', 
+                    table: 'chat_conversations', 
+                    filter: `agent_id=eq.${user.id}` 
+                },
+                handleRealtimeUpdate
+            )
+            .subscribe();
+
+        // NUEVA Suscripción a cambios en MENSAJES (para actualizar contadores de no leídos)
+        const messagesSubscription = supabase
+            .channel('public:chat_messages:admin')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE', // Nos interesa cuando se marca como leído
+                    schema: 'public',
+                    table: 'chat_messages',
+                    filter: `receiver_id=eq.${user.id}` // Solo mensajes dirigidos a este admin
+                },
+                handleRealtimeUpdate
+            )
             .subscribe();
 
         return () => {
-            supabase.removeChannel(channel);
+            supabase.removeChannel(conversationsSubscription);
+            supabase.removeChannel(messagesSubscription);
         };
-    }, [user, supabase]);
+    }, [user, supabase, loadChats]);
 
     const getFallbackName = (name) => {
         if (!name) return 'U';
@@ -96,7 +116,7 @@ const AdminChatListPage = () => {
             case 'pendiente': return 'destructive';
             case 'solucionado': return 'success';
             case 'cerrada': return 'secondary';
-            case 'en revisión': return 'secondary';
+            case 'en revisión': return 'primary';
             case 'leído': return 'outline';
             default: return 'secondary';
         }
@@ -104,7 +124,9 @@ const AdminChatListPage = () => {
 
     const filteredChats = chats.filter(chat =>
         chat.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        chat.short_id?.toLowerCase().includes(searchTerm.toLowerCase())
+        chat.short_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        chat.email?.toLowerCase().includes(searchTerm.toLowerCase())
+
     );
 
     return (
@@ -147,6 +169,7 @@ const AdminChatListPage = () => {
                                                             </Badge>
                                                         </div>
                                                         <p className="text-xs text-muted-foreground font-mono">{chat.short_id}</p>
+                                                        <p className="text-xs text-muted-foreground font-mono">{chat.email}</p>
                                                         <p className="text-sm text-muted-foreground truncate mt-1">{chat.last_message_content || '...'}</p>
                                                     </div>
                                                     <div className="text-right flex-shrink-0 w-20">
