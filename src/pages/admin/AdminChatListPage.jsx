@@ -16,17 +16,30 @@ const AdminChatListPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const supabase = useSupabaseClient();
 
+    // Función para eliminar duplicados de un array de chats
+    const getUniqueChats = (chatArray) => {
+        if (!chatArray) return [];
+        return Array.from(new Map(chatArray.map(chat => [chat.client_id, chat])).values());
+    };
+
     const loadChats = useCallback(async () => {
         if (!user) return;
         setLoading(true);
-        const { data, error } = await supabase.rpc('get_admin_chat_list', { admin_id_param: user.id });
-        if (error) {
-            console.error("Error fetching chat list:", error);
+        try {
+            const { data, error } = await supabase.rpc('get_admin_chat_list', { admin_id_param: user.id });
+            if (error) {
+                console.error("Error fetching chat list:", error);
+                setChats([]);
+            } else {
+                // Aplicamos el filtro de duplicados aquí
+                setChats(getUniqueChats(data));
+            }
+        } catch (err) {
+            console.error("Error inesperado en loadChats:", err);
             setChats([]);
-        } else {
-            setChats(data);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     }, [user, supabase]);
 
     useEffect(() => {
@@ -38,13 +51,14 @@ const AdminChatListPage = () => {
     useEffect(() => {
         if (!user) return;
 
-        const handleChatUpdate = ({ payload }) => {
+        const handleChatUpdate = (payload) => {
             const updatedChat = payload.payload;
-
             if (updatedChat && updatedChat.agent_id === user.id) {
                 setChats(currentChats => {
                     const otherChats = currentChats.filter(c => c.client_id !== updatedChat.client_id);
-                    return [updatedChat, ...otherChats];
+                    const newChatList = [updatedChat, ...otherChats];
+                    // Aplicamos el filtro de duplicados también en la actualización en tiempo real
+                    return getUniqueChats(newChatList);
                 });
             }
         };
@@ -60,8 +74,11 @@ const AdminChatListPage = () => {
 
     const getFallbackName = (name) => {
         if (!name) return 'U';
-        const parts = name.split(' ');
-        return parts.length > 1 ? `${parts[0][0]}${parts[1][0]}`.toUpperCase() : name.substring(0, 2).toUpperCase();
+        const parts = name.trim().split(' ');
+        if (parts.length > 1) {
+            return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+        }
+        return name.substring(0, 2).toUpperCase();
     };
 
     const formatTimestamp = (timestamp) => {
@@ -78,11 +95,9 @@ const AdminChatListPage = () => {
         switch (status) {
             case 'pendiente': return 'destructive';
             case 'solucionado': return 'success';
+            case 'cerrada': return 'secondary';
             case 'en revisión': return 'secondary';
             case 'leído': return 'outline';
-            case 'cerrada': return 'success';
-
-
             default: return 'secondary';
         }
     };
@@ -111,7 +126,7 @@ const AdminChatListPage = () => {
                                 {filteredChats.length > 0 ? (
                                     filteredChats.map((chat) => (
                                         <motion.div
-                                            key={chat.client_id}
+                                            key={chat.client_id} // Esta key ahora está garantizada de ser única
                                             layout
                                             initial={{ opacity: 0, y: -20 }}
                                             animate={{ opacity: 1, y: 0 }}

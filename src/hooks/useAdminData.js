@@ -426,39 +426,40 @@ export const useAdminData = () => {
         }
     }, [supabase, user]);
 
-    const updateChatStatus = useCallback(async (clientId, newStatus) => {
-        if (!user) return { error: { message: 'Usuario no autenticado.' } };
+    const updateChatStatus = useCallback(async (conversationId, newStatus) => {
+    if (!user) return { error: { message: 'Usuario no autenticado.' } };
 
-        try {
-            const updateData = { status: newStatus };
+    try {
+        const updateData = { status: newStatus };
 
-            if (newStatus === 'solucionado') {
-                updateData.closed_at = new Date().toISOString();
-                updateData.closed_by = user.id;
-            }
-            else {
-                updateData.closed_at = null;
-                updateData.closed_by = null;
-            }
-
-            const { data, error } = await supabase
-                .from('chat_conversations')
-                .update(updateData)
-                .eq('client_id', clientId)
-                .select()
-                .single();
-
-            if (error) throw error;
-
-            toast({ title: "✅ Estado actualizado", description: `La conversación ahora está "${newStatus}".` });
-            return { data, error: null };
-
-        } catch (error) {
-            console.error('Error en updateChatStatus:', error);
-            toast({ variant: "destructive", title: "❌ Error al actualizar estado", description: error.message });
-            return { data: null, error };
+        // Lógica para registrar quién y cuándo cierra/soluciona una conversación
+        if (newStatus === 'solucionado' || newStatus === 'cerrada') {
+            updateData.closed_at = new Date().toISOString();
+            updateData.closed_by = user.id;
+        } else {
+            // Si se reabre, limpiar los campos de cierre
+            updateData.closed_at = null;
+            updateData.closed_by = null;
         }
-    }, [supabase, user, toast]);
+
+        const { data, error } = await supabase
+            .from('chat_conversations')
+            .update(updateData)
+            .eq('id', conversationId) // <-- LA CORRECCIÓN CLAVE ESTÁ AQUÍ
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        toast({ title: "✅ Estado actualizado", description: `La conversación ahora está "${newStatus}".` });
+        return { data, error: null };
+
+    } catch (error) {
+        console.error('Error en updateChatStatus:', error);
+        toast({ variant: "destructive", title: "❌ Error al actualizar estado", description: error.message });
+        return { data: null, error };
+    }
+}, [supabase, user, toast]);
 
     const fetchAllDocuments = async () => {
   // 1. Obtener documentos
