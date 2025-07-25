@@ -60,6 +60,7 @@ const getNotificationIcon = (notification) => {
     case 'clock':         return <Clock className="w-4 h-4 text-blue-500" />;
     case 'dollar_sign':   return <DollarSign className="w-4 h-4 text-yellow-500" />;
     case 'package':       return <Package className="w-4 h-4 text-gray-500" />; // Ícono para 'completed'
+    
     // Puedes añadir más casos aquí si creas más íconos en el futuro.
   }
 
