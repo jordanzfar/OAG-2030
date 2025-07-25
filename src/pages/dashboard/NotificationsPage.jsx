@@ -6,57 +6,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- Iconos ---
-import { 
-    Bell, Search, Clock, CheckCircle, X, Package,
-    AlertTriangle, Info, DollarSign, XCircle, ShieldCheck, 
-    ShieldAlert, Gavel, Megaphone, Trophy, CircleSlash,
-    ChevronLeft, ChevronRight
-} from 'lucide-react';
+// --- Iconos (solo los usados directamente en el template) ---
+import { Bell, Search, Clock, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 
-
-// --- Hooks y Utilidades ---
-// Se restauran los hooks y utilidades para usar datos reales.
+// --- Hooks y Utilidades CENTRALIZADAS ---
 import { useNotifications } from '@/hooks/useNotifications';
-import { getNotificationCategory, buildNotificationDescription } from '@/lib/utils';
+import { getNotificationCategory, buildNotificationDescription, getNotificationIcon, getNotificationColor } from '@/lib/utils';
+import { Icon } from '@/components/ui/Icon';
 
 
-// --- Componente de Ícono Dinámico ---
-const NotificationIcon = ({ notification }) => {
-    const iconHint = notification.metadata?.icon;
-    let IconComponent = Bell;
-    let iconColor = "text-muted-foreground";
-
-    const iconMap = {
-        'gavel': { Cmp: Gavel, color: "text-gray-500" },
-        'megaphone': { Cmp: Megaphone, color: "text-orange-500" },
-        'trophy': { Cmp: Trophy, color: "text-yellow-500" },
-        'circle_slash': { Cmp: CircleSlash, color: "text-red-600" },
-        'check_circle': { Cmp: CheckCircle, color: "text-green-500" },
-        'clock': { Cmp: Clock, color: "text-blue-500" },
-        'dollar_sign': { Cmp: DollarSign, color: "text-yellow-600" },
-        'package': { Cmp: Package, color: "text-gray-600" },
-        'alert': { Cmp: AlertTriangle, color: "text-red-500" },
-        'info': { Cmp: Info, color: "text-blue-400" },
-    };
-
-    if (iconHint && iconMap[iconHint]) {
-        IconComponent = iconMap[iconHint].Cmp;
-        iconColor = iconMap[iconHint].color;
-    }
-
-    return <IconComponent className={`w-6 h-6 ${iconColor}`} />;
-};
-
-
-// --- Componente Principal ---
 const NotificationsPage = () => {
-    // --- CONEXIÓN A DATOS REALES ---
-    // Usamos el hook para obtener notificaciones, contador y funciones del estado global.
     const { notifications, unreadCount, updateNotificationStatus, markAllAsRead } = useNotifications();
 
-
-    // --- ESTADO DE PAGINACIÓN Y FILTROS ---
     const [searchTerm, setSearchTerm] = useState('');
     const [filterCategory, setFilterCategory] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all');
@@ -68,30 +29,25 @@ const NotificationsPage = () => {
         return Array.from(categories).sort();
     }, [notifications]);
 
-    // Primero, filtramos todas las notificaciones
     const filteredNotifications = useMemo(() => {
         return notifications.filter(n => {
             const category = getNotificationCategory(n.type);
             const matchesCategory = filterCategory === 'all' || category === filterCategory;
             const matchesStatus = filterStatus === 'all' || (filterStatus === 'read' && n.is_read) || (filterStatus === 'unread' && !n.is_read);
-            // La búsqueda ahora usa la descripción completa para mejores resultados
             const matchesSearch = searchTerm === '' || buildNotificationDescription(n).toLowerCase().includes(searchTerm.toLowerCase());
             return matchesCategory && matchesStatus && matchesSearch;
         });
     }, [notifications, searchTerm, filterCategory, filterStatus]);
 
-    // Reseteamos a la página 1 si los filtros cambian
     useEffect(() => {
         setCurrentPage(1);
     }, [searchTerm, filterCategory, filterStatus]);
     
-    // Calculamos el total de páginas y las notificaciones para la página actual
     const totalPages = Math.ceil(filteredNotifications.length / NOTIFICATIONS_PER_PAGE);
     const paginatedNotifications = useMemo(() => {
         const startIndex = (currentPage - 1) * NOTIFICATIONS_PER_PAGE;
         return filteredNotifications.slice(startIndex, startIndex + NOTIFICATIONS_PER_PAGE);
     }, [filteredNotifications, currentPage]);
-
 
     const formatDateTime = (dateString) => {
         const date = new Date(dateString);
@@ -100,7 +56,6 @@ const NotificationsPage = () => {
 
     return (
         <div className="space-y-8 p-4 md:p-6">
-            {/* --- Cabecera de la Página --- */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-foreground">Centro de Notificaciones</h1>
@@ -116,7 +71,6 @@ const NotificationsPage = () => {
                 )}
             </div>
 
-            {/* --- Panel de Filtros --- */}
             <Card className="bg-card/50 border-border/50 shadow-sm">
                 <CardContent className="p-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -150,53 +104,58 @@ const NotificationsPage = () => {
                 </CardContent>
             </Card>
 
-            {/* --- Lista de Notificaciones --- */}
             <div className="space-y-3">
                 <AnimatePresence>
                     {paginatedNotifications.length > 0 ? (
-                        paginatedNotifications.map((notification) => (
-                            <motion.div
-                                key={notification.id}
-                                layout
-                                initial={{ opacity: 0, y: 20, scale: 0.98 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: -20, scale: 0.98 }}
-                                transition={{ duration: 0.3, ease: "easeInOut" }}
-                            >
-                                <Card className={`transition-all duration-300 ${!notification.is_read ? 'bg-primary/5 border-primary/20' : 'bg-card/60'}`}>
-                                    <CardContent className="p-4 flex items-start space-x-4">
-                                        <div className="flex-shrink-0 mt-1">
-                                            <NotificationIcon notification={notification} />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <Badge variant={!notification.is_read ? "default" : "secondary"}>
-                                                    {getNotificationCategory(notification.type)}
-                                                </Badge>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-xs"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        updateNotificationStatus(notification.id, !notification.is_read);
-                                                    }}
-                                                >
-                                                    {notification.is_read ? "Marcar no leída" : "Marcar leída"}
-                                                </Button>
+                        paginatedNotifications.map((notification) => {
+                            // Lógica centralizada
+                            const iconName = getNotificationIcon(notification);
+                            const iconColor = getNotificationColor(notification);
+
+                            return (
+                                <motion.div
+                                    key={notification.id}
+                                    layout
+                                    initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: -20, scale: 0.98 }}
+                                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                                >
+                                    <Card className={`transition-all duration-300 ${!notification.is_read ? 'bg-primary/5 border-primary/20' : 'bg-card/60'}`}>
+                                        <CardContent className="p-4 flex items-start space-x-4">
+                                            <div className="flex-shrink-0 mt-1">
+                                                <Icon name={iconName} className={`w-6 h-6 ${iconColor}`} />
                                             </div>
-                                            <p className={`text-sm ${!notification.is_read ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
-                                                {buildNotificationDescription(notification)}
-                                            </p>
-                                            <div className="flex items-center text-xs text-muted-foreground mt-2">
-                                                <Clock className="w-3 h-3 mr-1.5" />
-                                                {formatDateTime(notification.created_at)}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <Badge variant={!notification.is_read ? "default" : "secondary"}>
+                                                        {getNotificationCategory(notification.type)}
+                                                    </Badge>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-xs"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            updateNotificationStatus(notification.id, !notification.is_read);
+                                                        }}
+                                                    >
+                                                        {notification.is_read ? "Marcar no leída" : "Marcar leída"}
+                                                    </Button>
+                                                </div>
+                                                <p className={`text-sm ${!notification.is_read ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
+                                                    {buildNotificationDescription(notification)}
+                                                </p>
+                                                <div className="flex items-center text-xs text-muted-foreground mt-2">
+                                                    <Clock className="w-3 h-3 mr-1.5" />
+                                                    {formatDateTime(notification.created_at)}
+                                                </div>
                                             </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </motion.div>
-                        ))
+                                        </CardContent>
+                                    </Card>
+                                </motion.div>
+                            );
+                        })
                     ) : (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
                             <Card className="bg-card border-dashed">
@@ -216,7 +175,6 @@ const NotificationsPage = () => {
                 </AnimatePresence>
             </div>
 
-            {/* --- CONTROLES DE PAGINACIÓN --- */}
             {totalPages > 1 && (
                 <div className="flex items-center justify-center space-x-4 pt-4">
                     <Button

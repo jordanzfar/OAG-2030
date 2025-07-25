@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from 'react-router-dom';
@@ -8,60 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- Iconos ---
-import { 
-    Bell, Clock, X, Package, Gavel, Megaphone, 
-    Trophy, CircleSlash, CheckCircle, DollarSign, 
-    AlertTriangle, Info, XCircle, Loader2 
-} from 'lucide-react';
+// --- Iconos (solo los usados directamente en el template)---
+import { Bell, Clock, X, Loader2 } from 'lucide-react';
 
-// ===================================================================================
-// --- LÓGICA DE UTILIDADES (Compartida por ambos componentes) ---
-// ===================================================================================
-
-const buildNotificationDescription = (notification) => {
-    if (!notification) return '';
-    const metadata = notification.metadata || {};
-    let description = notification.message;
-
-    // Regla específica para la notificación de nueva puja para el admin
-    if (notification.type === 'new_auction_bid' && metadata.lot_number) {
-        const formattedAmount = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(metadata.amount || 0);
-        description = `Nueva puja de ${metadata.user_name || 'un usuario'} por ${formattedAmount} en el lote #${metadata.lot_number}.`;
-    }
-    // Puedes añadir más reglas 'else if' aquí si es necesario
-
-    return description;
-};
-
-const NotificationIcon = ({ notification }) => {
-    const iconHint = notification.metadata?.icon;
-    const iconMap = {
-        'gavel': { Cmp: Gavel, color: "text-gray-500" },
-        'megaphone': { Cmp: Megaphone, color: "text-orange-500" },
-        'trophy': { Cmp: Trophy, color: "text-yellow-500" },
-        'circle_slash': { Cmp: CircleSlash, color: "text-red-600" },
-        'check_circle': { Cmp: CheckCircle, color: "text-green-500" },
-        'clock': { Cmp: Clock, color: "text-blue-500" },
-        'dollar_sign': { Cmp: DollarSign, color: "text-yellow-600" },
-        'package': { Cmp: Package, color: "text-gray-600" },
-        'alert': { Cmp: AlertTriangle, color: "text-red-500" },
-        'info': { Cmp: Info, color: "text-blue-400" },
-        'x_circle': { Cmp: XCircle, color: "text-red-500" },
-    };
-
-    if (iconHint && iconMap[iconHint]) {
-        const { Cmp, color } = iconMap[iconHint];
-        return <Cmp className={`w-5 h-5 ${color}`} />;
-    }
-
-    return <Bell className="w-5 h-5 text-muted-foreground" />;
-};
+// --- LÓGICA CENTRALIZADA ---
+import { buildNotificationDescription, getNotificationIcon, getNotificationColor } from '@/lib/utils';
+import { Icon } from '@/components/ui/Icon';
 
 
-// ===================================================================================
-// --- WIDGET DE NOTIFICACIONES DEL ADMINISTRADOR ---
-// ===================================================================================
 const AdminNotificationsWidget = () => {
     const navigate = useNavigate();
     const supabase = useSupabaseClient();
@@ -78,7 +32,7 @@ const AdminNotificationsWidget = () => {
             .from('notifications')
             .select('*', { count: 'exact' })
             .eq('is_read', false)
-            .or(`target_role.eq.admin`) // Trae notificaciones para cualquier admin
+            .or(`target_role.eq.admin`)
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -96,7 +50,6 @@ const AdminNotificationsWidget = () => {
         const channel = supabase.channel('admin-notifications-widget')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, 
             (payload) => {
-                // Recargar notificaciones cuando haya cualquier cambio
                 loadUnreadNotifications();
             })
             .subscribe();
@@ -148,17 +101,23 @@ const AdminNotificationsWidget = () => {
                                     <div className="p-4 h-24 flex items-center justify-center text-center text-muted-foreground">No tienes notificaciones nuevas.</div>
                                 ) : (
                                     <div className="max-h-80 overflow-y-auto">
-                                        {notifications.slice(0, 5).map((notification) => (
-                                            <div key={notification.id} className="p-3 border-b hover:bg-muted/50 cursor-pointer" onClick={() => handleNotificationClick(notification)}>
-                                                <div className="flex items-start space-x-3">
-                                                    <div className="mt-1"><NotificationIcon notification={notification} /></div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-sm font-medium">{buildNotificationDescription(notification)}</p>
-                                                        <div className="flex items-center mt-1 space-x-2"><Clock className="w-3 h-3 text-muted-foreground" /><span className="text-xs text-muted-foreground">{formatTimeAgo(notification.created_at)}</span></div>
+                                        {notifications.slice(0, 5).map((notification) => {
+                                            // Lógica centralizada
+                                            const iconName = getNotificationIcon(notification);
+                                            const iconColor = getNotificationColor(notification);
+
+                                            return (
+                                                <div key={notification.id} className="p-3 border-b hover:bg-muted/50 cursor-pointer" onClick={() => handleNotificationClick(notification)}>
+                                                    <div className="flex items-start space-x-3">
+                                                        <Icon name={iconName} className={`w-5 h-5 mt-1 ${iconColor}`} />
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-medium">{buildNotificationDescription(notification)}</p>
+                                                            <div className="flex items-center mt-1 space-x-2"><Clock className="w-3 h-3 text-muted-foreground" /><span className="text-xs text-muted-foreground">{formatTimeAgo(notification.created_at)}</span></div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                                 <div className="p-2 border-t"><Button variant="ghost" size="sm" className="w-full text-primary" onClick={() => { setShowDropdown(false); navigate('/admin/notifications'); }}>Ver todas las notificaciones</Button></div>
