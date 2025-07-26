@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Bell, X, Clock, Loader2, FileSearch2, FileMinus2, AlertTriangle, Landmark, DollarSign, PackageCheck, CheckCircle2, XCircle, FilePlus2, Gavel, TrendingDown, Trophy, ShieldOff, Search, UserPlus
 } from 'lucide-react';
-
+//default icon
 const iconMap = {
   bell: Bell,
   x: X,
@@ -29,4 +29,4 @@ const iconMap = {
 export const Icon = ({ name, className, ...props }) => {
   const LucideIcon = iconMap[name] || iconMap.default;
   return <LucideIcon className={className} {...props} />;
-};
+}; 
