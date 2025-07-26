@@ -285,9 +285,14 @@ export default function AuctionPage() {
 
     return (
         <div className="w-full max-w-5xl mx-auto pb-8 px-4">
-            <h1 className="text-3xl font-bold tracking-tight mb-2">Solicitar Puja en Subasta</h1>
-            <p className="text-muted-foreground mb-8">Completa los 2 pasos para autorizarnos a pujar por un vehículo en tu nombre.</p>
-            <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-lg">
+  <h1 className="text-3xl font-bold tracking-tight mb-2">
+    Autorización para Participación en Subasta
+  </h1>
+  <p className="text-muted-foreground mb-8">
+    Para que podamos realizar una puja en tu nombre durante una subasta vehicular, es necesario completar los dos pasos indicados a continuación. Este proceso nos permite actuar como tu representante autorizado, garantizando transparencia, seguridad y cumplimiento legal en todo momento.
+  </p>
+  <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-lg">
+
                 <CardHeader>
                     <ProgressBar currentStep={currentStep} />
                 </CardHeader>
@@ -382,10 +387,7 @@ export default function AuctionPage() {
                                             <p className="font-bold text-lg">Total Estimado: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(calculatedFees?.total || 0)}</p>
                                         </div>
                                     </Card>
-                                    <div>
-                                        <Label htmlFor="comments">Comentarios o Instrucciones Adicionales</Label>
-                                        <Textarea id="comments" {...form.register('comments')} className="mt-1" placeholder="Ej: Revisar si hay daños en la parte inferior..." />
-                                    </div>
+                                    
                                     <div className="border-t pt-4 space-y-4">
                                         <Label className="text-lg font-semibold">Consentimiento y Firma Digital</Label>
                                         <Alert variant="default" className="bg-muted/50"><PenSquare className="h-4 w-4" /><AlertTitle>Firma Requerida</AlertTitle><AlertDescription>Firma en el recuadro para confirmar tu solicitud. Esta firma se guardará como comprobante de tu autorización.</AlertDescription></Alert>

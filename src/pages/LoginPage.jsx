@@ -62,10 +62,11 @@ const LoginPage = () => {
                     <img 
                         src={logo} 
                         alt="Logo de Opulent Auto Gallery" 
-                        className="w-9/5 max-w-xs mx-auto mb-7" 
+                        className="w-auto h-15 mx-auto mb-8" 
                     />
-                    
-                    <p className="text-muted-foreground"></p>
+
+
+                    <p className="text-sm text-muted-foreground mb-4">Accede a tu cuenta para continuar.</p>
                 </div>
                 
                 <form onSubmit={handleLogin} className="space-y-4">

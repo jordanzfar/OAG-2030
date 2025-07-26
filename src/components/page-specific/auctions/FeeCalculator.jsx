@@ -12,7 +12,7 @@ const FeeCalculator = ({ fees }) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="rounded-lg bg-muted/50 p-4 border self-start"
+      className="rounded-lg bg-muted/50 p-4 border FLEX flex-col items-center justify-center shadow-md"
     >
       <h4 className="font-semibold mb-3 text-center text-muted-foreground">Desglose de Tarifas Estimadas</h4>
       <Table>
@@ -24,25 +24,25 @@ const FeeCalculator = ({ fees }) => {
             </TableCell>
           </TableRow>
           <TableRow>
-            <TableCell className="text-muted-foreground">Buyer's Fee</TableCell>
+            <TableCell className="text-muted-foreground">Copart/IAA Buyer's Fee</TableCell>
             <TableCell className="text-right">
               <AnimatedNumber value={fees.buyer_fee} />
             </TableCell>
           </TableRow>
           <TableRow>
-            <TableCell className="text-muted-foreground">Internet Fee</TableCell>
+            <TableCell className="text-muted-foreground">Copart/IAA Internet Fee</TableCell>
             <TableCell className="text-right">
               <AnimatedNumber value={fees.internet_fee} />
             </TableCell>
           </TableRow>
           <TableRow>
-            <TableCell className="text-muted-foreground">Tarifa Opulent</TableCell>
+            <TableCell className="text-muted-foreground">Tarifa Opulent Auto Gallery</TableCell>
             <TableCell className="text-right">
               <AnimatedNumber value={fees.opulent_fee} />
             </TableCell>
           </TableRow>
-           <TableRow>
-            <TableCell className="text-muted-foreground">Tarifas de Proceso</TableCell>
+          <TableRow>
+            <TableCell className="text-muted-foreground">Copart/IAA Tarifas de Proceso</TableCell>
             <TableCell className="text-right">
               <AnimatedNumber value={fees.processing_fees} />
             </TableCell>
