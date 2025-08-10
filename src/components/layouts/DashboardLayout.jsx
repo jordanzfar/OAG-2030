@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {LogOut, LayoutDashboard, FileText, SearchCheck, FileBadge, Coins as HandCoins, Banknote, User,UploadCloud, MessageSquare, Bell, PanelLeft, PanelRight } from 'lucide-react';import { useToast } from '@/components/ui/use-toast';
 import NotificationsWidget from '@/components/dashboard/NotificationsWidget';
-import logo from '@/assets/OPULENT-BRONZE.png';
+import logo from '@/assets/OAG-LOGO.png';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth } from '@/hooks/useAuth';
@@ -70,16 +70,9 @@ const DashboardLayout = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { toast } = useToast();
-    // --- INICIO DE LA CORRECCIÓN 1 ---
-    // Ya no necesitamos `logout` de useAuth, ni `signOut` del otro hook. Lo haremos directo.
     const { user, userProfile } = useAuth();
-    // MODIFICADO: El sidebar ahora empieza colapsado por defecto.
     const [isCollapsed, setIsCollapsed] = useState(true);
-    
-    // NUEVO: Usamos una referencia para manejar el temporizador del retraso.
     const timerRef = useRef(null);
-
-    // NUEVO: Funciones para manejar el hover con retraso.
     const handleMouseEnter = () => {
         if (timerRef.current) {
             clearTimeout(timerRef.current);
@@ -93,20 +86,14 @@ const DashboardLayout = () => {
         }, 300); // 300ms de retraso antes de colapsar
     };
 
-    // --- FIN DE LA CORRECCIÓN 1 ---
 
-
-    // --- INICIO DE LA CORRECCIÓN 2 ---
-    // Simplificamos la función handleLogout para que solo use el método de Supabase.
     const handleLogout = async () => {
         toast({
             title: "Cerrando sesión...",
         });
         
-        // Llamamos directamente a la función signOut del cliente de Supabase.
         const { error } = await supabase.auth.signOut();
         
-        // Navegamos al login independientemente de si hubo un error o no.
         navigate('/login', { replace: true });
         
         if (error) {
@@ -123,30 +110,25 @@ const DashboardLayout = () => {
             });
         }
     };
-    // --- FIN DE LA CORRECCIÓN ---
 
 
     return (
         <div className="flex min-h-screen w-full flex-col bg-muted/40">
             {/* INICIO: Sidebar de escritorio (visible en md y superior) */}
             <motion.aside
-                // NUEVO: Eventos de mouse para controlar el estado
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
                 
-                // MODIFICADO: Clases para el efecto Glassmorphism
                 className="hidden md:fixed md:inset-y-0 md:z-50 md:flex md:flex-col border-r border-border/20 bg-background/80 backdrop-blur-xl"
                 
                 initial={false}
                 animate={{ width: isCollapsed ? 80 : 240 }}
                 transition={{ duration: 0.3, ease: "easeInOut" }}
             >
-                {/* El botón ya no controla el estado, solo es un indicador visual */}
                 <div className="flex h-16 items-center justify-between border-b border-border/20 px-4">
                     <Link to="/dashboard" className="flex items-center gap-2 font-semibold">
                         {!isCollapsed && <img src={logo} alt="Logo" className="h-10" />}
                     </Link>
-                    {/* MODIFICADO: El botón ahora es solo un ícono visual */}
                     <div className="h-9 w-9 flex items-center justify-center">
                         {isCollapsed ? <PanelRight className="h-5 w-5 text-muted-foreground" /> : <PanelLeft className="h-5 w-5 text-muted-foreground" />}
                     </div>
