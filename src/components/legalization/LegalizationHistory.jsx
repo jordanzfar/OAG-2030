@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FolderOpen, FileText, CheckCircle, AlertCircle, Clock } from 'lucide-react';
@@ -12,14 +11,9 @@ const LegalizationHistory = ({ legalizations, onOpenDocumentModal }) => {
   const { fetchRecords } = useSupabaseData();
   const [documentsData, setDocumentsData] = useState({});
 
-  useEffect(() => {
-    if (user && legalizations.length > 0) {
-      loadDocumentsForLegalizations();
-    }
-  }, [user, legalizations]);
-
-  const loadDocumentsForLegalizations = async () => {
-    if (!user) return;
+  // MEJORA: Se envuelve en useCallback para optimizar y evitar re-ejecuciones innecesarias.
+  const loadDocumentsForLegalizations = useCallback(async () => {
+    if (!user || !legalizations || legalizations.length === 0) return;
 
     const documentsPromises = legalizations.map(async (legalization) => {
       const result = await fetchRecords('documents', { 
@@ -33,12 +27,17 @@ const LegalizationHistory = ({ legalizations, onOpenDocumentModal }) => {
     });
 
     const results = await Promise.all(documentsPromises);
-    const documentsMap = {};
-    results.forEach(({ legalizationId, documents }) => {
-      documentsMap[legalizationId] = documents;
-    });
+    const documentsMap = results.reduce((acc, { legalizationId, documents }) => {
+      acc[legalizationId] = documents;
+      return acc;
+    }, {});
+
     setDocumentsData(documentsMap);
-  };
+  }, [user, legalizations, fetchRecords]);
+
+  useEffect(() => {
+    loadDocumentsForLegalizations();
+  }, [loadDocumentsForLegalizations]);
 
   const getDocumentStats = (legalizationId) => {
     const documents = documentsData[legalizationId] || [];
@@ -54,8 +53,8 @@ const LegalizationHistory = ({ legalizations, onOpenDocumentModal }) => {
       approved,
       rejected,
       pending,
-      missing: totalRequired - uploaded,
-      completionPercentage: Math.round((uploaded / totalRequired) * 100)
+      missing: totalRequired > 0 ? totalRequired - uploaded : 0,
+      completionPercentage: totalRequired > 0 ? Math.round((uploaded / totalRequired) * 100) : 0
     };
   };
 
@@ -67,9 +66,7 @@ const LegalizationHistory = ({ legalizations, onOpenDocumentModal }) => {
       rejected: { bg: 'bg-red-100', text: 'text-red-800', label: 'Rechazado' },
       pending: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Pendiente' }
     };
-
     const config = statusConfig[status] || statusConfig.pending;
-    
     return (
       <span className={`px-2 py-1 rounded text-xs ${config.bg} ${config.text}`}>
         {config.label}
@@ -83,7 +80,7 @@ const LegalizationHistory = ({ legalizations, onOpenDocumentModal }) => {
         <span>Documentos</span>
         <span>{stats.uploaded}/{stats.total}</span>
       </div>
-      <div className="w-full bg-gray-200 rounded-full h-1.5">
+      <div className="w-full bg-gray-200 rounded-full h-1.5 dark:bg-gray-700">
         <div 
           className="bg-blue-600 h-1.5 rounded-full transition-all duration-300" 
           style={{ width: `${stats.completionPercentage}%` }}
@@ -117,27 +114,27 @@ const LegalizationHistory = ({ legalizations, onOpenDocumentModal }) => {
         <CardDescription>Estado de solicitudes anteriores y progreso de documentos.</CardDescription>
       </CardHeader>
       <CardContent>
-        {legalizations.length > 0 ? (
+        {legalizations && legalizations.length > 0 ? (
           <div className="space-y-4">
             {legalizations.map((legalization) => {
               const stats = getDocumentStats(legalization.id);
-              
+              // --- LÓGICA CORREGIDA Y MEJORADA ---
+              const isProcessActive = !['completed', 'approved'].includes(legalization.status);
+
               return (
                 <div key={legalization.id} className="p-4 border border-border rounded-lg bg-secondary">
-                  <div className="flex justify-between items-start">
+                  <div className="flex justify-between items-start gap-4">
                     <div className="flex-1">
                       <h4 className="font-medium">VIN: {legalization.vin}</h4>
                       <p className="text-sm text-muted-foreground">
-                        {legalization.vehicle_info.marca} {legalization.vehicle_info.modelo} {legalization.vehicle_info.ano}
+                        {legalization.vehicle_info?.marca} {legalization.vehicle_info?.modelo} {legalization.vehicle_info?.ano}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         Creado: {new Date(legalization.created_at).toLocaleDateString()}
                       </p>
                       
-                      {/* Document Progress */}
                       <DocumentProgressBar stats={stats} />
                       
-                      {/* Missing Documents Alert */}
                       {stats.missing > 0 && (
                         <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-950/20 rounded border border-yellow-200 dark:border-yellow-800">
                           <p className="text-xs text-yellow-800 dark:text-yellow-200">
@@ -147,7 +144,6 @@ const LegalizationHistory = ({ legalizations, onOpenDocumentModal }) => {
                         </div>
                       )}
                       
-                      {/* Rejected Documents Alert */}
                       {stats.rejected > 0 && (
                         <div className="mt-2 p-2 bg-red-50 dark:bg-red-950/20 rounded border border-red-200 dark:border-red-800">
                           <p className="text-xs text-red-800 dark:text-red-200">
@@ -159,7 +155,8 @@ const LegalizationHistory = ({ legalizations, onOpenDocumentModal }) => {
                     </div>
                     
                     <div className="flex flex-col items-end space-y-2">
-                      {(legalization.status === 'pending' || legalization.status === 'in_review') && (
+                      {/* La condición ahora usa la nueva variable 'isProcessActive' */}
+                      {isProcessActive && (
                         <Button
                           variant="outline"
                           size="sm"

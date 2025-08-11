@@ -13,13 +13,13 @@ import { sanitizeFileName } from '@/utils/fileUtils';
 const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploaded }) => {
   const { toast } = useToast();
   const { user } = useSupabaseAuth();
-  const { createDocument, uploadFile, fetchRecords } = useSupabaseData();
+  // --- CAMBIO 1: Importa la nueva función 'updateDocument' ---
+  const { createDocument, updateDocument, uploadFile, fetchRecords } = useSupabaseData();
   const [uploadedFiles, setUploadedFiles] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingDocuments, setExistingDocuments] = useState([]);
   const [loadingDocuments, setLoadingDocuments] = useState(true);
 
-  // Inicializar uploadedFiles como objeto con todas las claves necesarias
   useEffect(() => {
     const initialFiles = {};
     requiredDocuments.forEach(doc => {
@@ -32,18 +32,16 @@ const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploade
     if (legalization && user) {
       loadExistingDocuments();
     }
-  }, [legalization, user]);
+  }, [legalization, user, isOpen]);
 
   const loadExistingDocuments = async () => {
     if (!user || !legalization) return;
-
     setLoadingDocuments(true);
     try {
       const result = await fetchRecords('documents', { 
         user_id: user.id, 
         legalization_id: legalization.id 
       });
-
       if (result.success) {
         setExistingDocuments(result.data || []);
       }
@@ -62,6 +60,7 @@ const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploade
   const getDocumentStatus = (documentKey) => {
     const existing = existingDocuments.find(doc => doc.document_type === documentKey);
     return existing ? {
+      ...existing, // <-- Pasamos el documento completo para tener el ID
       exists: true,
       fileName: existing.file_name,
       status: existing.status,
@@ -94,8 +93,6 @@ const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploade
         ...prev, 
         [fieldName]: file 
       }));
-      
-      // Actualizar el label
       const label = document.getElementById(`modal-${fieldName}-label`);
       if (label) {
         label.textContent = file.name;
@@ -103,20 +100,15 @@ const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploade
     }
   };
 
+  // --- CAMBIO 2: Lógica mejorada en handleSubmit para Actualizar o Crear ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user || !legalization) return;
 
-    // Verificar que hay archivos para subir
-    const filesToUpload = Object.entries(uploadedFiles)
-      .filter(([_, file]) => file !== null);
+    const filesToUpload = Object.entries(uploadedFiles).filter(([_, file]) => file !== null);
     
     if (filesToUpload.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "Sin documentos",
-        description: "Selecciona al menos un documento para subir.",
-      });
+      toast({ variant: "destructive", title: "Sin documentos", description: "Selecciona al menos un documento para subir." });
       return;
     }
 
@@ -129,24 +121,35 @@ const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploade
             const cleanFileName = sanitizeFileName(file.name); 
             const filePath = `${user.id}/legalizations/${legalization.id}/${key}_${Date.now()}_${cleanFileName}`;
             
-            // Subir el archivo
             const uploadResult = await uploadFile('documents', filePath, file);
             if (!uploadResult.success) throw uploadResult.error;
             
-            // Crear registro del documento
-            const docResult = await createDocument({
-              user_id: user.id,
-              legalization_id: legalization.id,
-              document_type: key,
+            const docStatus = getDocumentStatus(key);
+            let docResult;
+
+            const documentPayload = {
               file_name: cleanFileName,
               file_path: filePath,
               file_size: file.size,
               mime_type: file.type,
-              status: 'pending'
-            });
+              status: 'pending' // Al subir, siempre vuelve a 'pending'
+            };
+            
+            // Si existe un documento para este 'tipo' (key), lo actualizamos.
+            // Esto cubre el caso de 'rejected' y también permite reemplazar 'pending' o 'approved'.
+            if (docStatus.exists) {
+              docResult = await updateDocument(docStatus.id, documentPayload);
+            } else {
+              // Si no existe, lo creamos.
+              docResult = await createDocument({
+                ...documentPayload,
+                user_id: user.id,
+                legalization_id: legalization.id,
+                document_type: key,
+              });
+            }
 
             if (!docResult.success) throw docResult.error;
-            
             return { success: true, key };
           } catch (error) {
             console.error(`Error uploading ${key}:`, error);
@@ -156,43 +159,34 @@ const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploade
       );
 
       const successfulUploads = uploadResults.filter(r => r.success);
-      
       if (successfulUploads.length > 0) {
         toast({
           title: "Documentos Subidos",
-          description: `Se han subido ${successfulUploads.length} documento(s) exitosamente.`,
+          description: `Se han procesado ${successfulUploads.length} documento(s) exitosamente.`,
         });
-        
-        // Limpiar solo los archivos subidos exitosamente
         setUploadedFiles(prev => {
           const newFiles = { ...prev };
           successfulUploads.forEach(({ key }) => {
             newFiles[key] = null;
+            const label = document.getElementById(`modal-${key}-label`);
+            if (label) {
+              label.innerHTML = `<span class="font-semibold">Reemplazar archivo</span>`;
+            }
           });
           return newFiles;
         });
-
         await loadExistingDocuments();
         onDocumentsUploaded();
       }
 
-      // Mostrar errores individuales si hubo fallos
       const failedUploads = uploadResults.filter(r => !r.success);
       if (failedUploads.length > 0) {
-        toast({
-          variant: "destructive",
-          title: "Error en algunos documentos",
-          description: `${failedUploads.length} documento(s) no se pudieron subir.`,
-        });
+        toast({ variant: "destructive", title: "Error en algunos documentos", description: `${failedUploads.length} documento(s) no se pudieron subir.` });
       }
 
     } catch (error) {
       console.error('Error in document upload:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Ocurrió un error al procesar los documentos.",
-      });
+      toast({ variant: "destructive", title: "Error", description: "Ocurrió un error al procesar los documentos." });
     } finally {
       setIsSubmitting(false);
     }
@@ -206,7 +200,7 @@ const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploade
         <Label htmlFor={`modal-${id}`} className="flex items-center">
           <Upload className="w-4 h-4 mr-2" />
           {label}
-          {required && <span className="text-destructive ml-1">*</span>}
+          {required && !docStatus.exists && <span className="text-destructive ml-1">*</span>}
           {docStatus.exists && (
             <CheckCircle className="w-4 h-4 ml-2 text-green-500" />
           )}
@@ -220,7 +214,7 @@ const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploade
                 {getStatusText(docStatus.status)}
               </span>
             </div>
-            <p className="text-muted-foreground mt-1">{docStatus.fileName}</p>
+            <p className="text-muted-foreground mt-1 truncate" title={docStatus.fileName}>{docStatus.fileName}</p>
             <p className="text-xs text-muted-foreground">
               Subido: {new Date(docStatus.uploadedAt).toLocaleDateString()}
             </p>
@@ -264,7 +258,6 @@ const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploade
 
   if (!legalization) return null;
 
-  // Calcular estadísticas de documentos
   const totalDocuments = requiredDocuments.length;
   const uploadedCount = existingDocuments.length;
   const approvedCount = existingDocuments.filter(doc => doc.status === 'approved').length;
@@ -274,152 +267,92 @@ const DocumentUploadModal = ({ isOpen, onClose, legalization, onDocumentsUploade
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        {/* ... (Tu DialogHeader y resúmenes de documentos no necesitan cambios) ... */}
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>Subir Documentos Faltantes</span>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogTitle>
-          <DialogDescription>
-            Sube los documentos faltantes para la legalización del VIN: {legalization.vin}
-          </DialogDescription>
+            <DialogTitle className="flex items-center justify-between">
+                <span>Subir Documentos Faltantes</span>
+                <Button variant="ghost" size="icon" onClick={onClose}>
+                    <X className="h-4 w-4" />
+                </Button>
+            </DialogTitle>
+            <DialogDescription>
+                Sube los documentos faltantes para la legalización del VIN: {legalization.vin}
+            </DialogDescription>
         </DialogHeader>
-
-        {/* Document Status Summary */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800 text-center">
-            <div className="text-2xl font-bold text-blue-600">{uploadedCount}</div>
-            <div className="text-sm text-blue-800 dark:text-blue-200">Subidos</div>
-          </div>
-          <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800 text-center">
-            <div className="text-2xl font-bold text-green-600">{approvedCount}</div>
-            <div className="text-sm text-green-800 dark:text-green-200">Aprobados</div>
-          </div>
-          <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-800 text-center">
-            <div className="text-2xl font-bold text-yellow-600">{pendingCount}</div>
-            <div className="text-sm text-yellow-800 dark:text-yellow-200">En Revisión</div>
-          </div>
-          <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800 text-center">
-            <div className="text-2xl font-bold text-red-600">{rejectedCount}</div>
-            <div className="text-sm text-red-800 dark:text-red-200">Rechazados</div>
-          </div>
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800 text-center">
+                <div className="text-2xl font-bold text-blue-600">{uploadedCount}</div>
+                <div className="text-sm text-blue-800 dark:text-blue-200">Subidos</div>
+            </div>
+            <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800 text-center">
+                <div className="text-2xl font-bold text-green-600">{approvedCount}</div>
+                <div className="text-sm text-green-800 dark:text-green-200">Aprobados</div>
+            </div>
+            <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-800 text-center">
+                <div className="text-2xl font-bold text-yellow-600">{pendingCount}</div>
+                <div className="text-sm text-yellow-800 dark:text-yellow-200">En Revisión</div>
+            </div>
+            <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800 text-center">
+                <div className="text-2xl font-bold text-red-600">{rejectedCount}</div>
+                <div className="text-sm text-red-800 dark:text-red-200">Rechazados</div>
+            </div>
         </div>
-
-        {/* Progress Bar */}
         <div className="mb-6">
-          <div className="flex justify-between text-sm mb-2">
-            <span>Progreso de documentos</span>
-            <span>{uploadedCount}/{totalDocuments} documentos</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-              style={{ width: `${(uploadedCount / totalDocuments) * 100}%` }}
-            ></div>
-          </div>
+            <div className="flex justify-between text-sm mb-2">
+                <span>Progreso de documentos</span>
+                <span>{uploadedCount}/{totalDocuments} documentos</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                    style={{ width: `${(uploadedCount / totalDocuments) * 100}%` }}
+                ></div>
+            </div>
         </div>
-
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Información sobre documentos */}
-          <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Estado de Documentos</h4>
-            <p className="text-sm text-blue-800 dark:text-blue-200">
-              Puedes subir documentos nuevos o reemplazar los existentes. Los documentos rechazados necesitan ser resubidos.
-            </p>
-          </div>
-
-          {/* Document upload sections */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Estado de Documentos</h4>
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                    Puedes subir documentos nuevos o reemplazar los existentes. Los documentos rechazados necesitan ser resubidos.
+                </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                    <h4 className="font-medium text-foreground">Documentos de Identificación</h4>
+                    <DocumentUploadField id="identificationFront" label="Identificación (Frontal)" description="INE, Pasaporte o Cédula - Lado frontal" required={true} />
+                    <DocumentUploadField id="identificationBack" label="Identificación (Trasero)" description="INE, Pasaporte o Cédula - Lado trasero" required={true} />
+                    <DocumentUploadField id="proofOfAddress" label="Comprobante de Domicilio" description="Recibo de luz, agua o teléfono (máx. 3 meses)" required={true} />
+                </div>
+                <div className="space-y-4">
+                    <h4 className="font-medium text-foreground">Documentos del Vehículo</h4>
+                    <DocumentUploadField id="titleFront" label="Título de Propiedad (Frontal)" description="Title del vehículo - Lado frontal" required={true} />
+                    <DocumentUploadField id="titleBack" label="Título de Propiedad (Trasero)" description="Title del vehículo - Lado trasero" required={true} />
+                </div>
+            </div>
             <div className="space-y-4">
-              <h4 className="font-medium text-foreground">Documentos de Identificación</h4>
-              <DocumentUploadField 
-                id="identificationFront" 
-                label="Identificación (Frontal)" 
-                description="INE, Pasaporte o Cédula - Lado frontal"
-                required={true}
-              />
-              <DocumentUploadField 
-                id="identificationBack" 
-                label="Identificación (Trasero)" 
-                description="INE, Pasaporte o Cédula - Lado trasero"
-                required={true}
-              />
-              <DocumentUploadField 
-                id="proofOfAddress" 
-                label="Comprobante de Domicilio" 
-                description="Recibo de luz, agua o teléfono (máx. 3 meses)"
-                required={true}
-              />
+                <h4 className="font-medium text-foreground">Fotografías del Vehículo</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <DocumentUploadField id="vehiclePhoto1" label="Foto Frontal" description="Vista frontal completa del vehículo" />
+                    <DocumentUploadField id="vehiclePhoto2" label="Foto Trasera" description="Vista trasera completa del vehículo" />
+                    <DocumentUploadField id="vehiclePhoto3" label="Foto Lateral Izquierda" description="Vista lateral izquierda completa" />
+                    <DocumentUploadField id="vehiclePhoto4" label="Foto Lateral Derecha" description="Vista lateral derecha completa" />
+                </div>
             </div>
-
             <div className="space-y-4">
-              <h4 className="font-medium text-foreground">Documentos del Vehículo</h4>
-              <DocumentUploadField 
-                id="titleFront" 
-                label="Título de Propiedad (Frontal)" 
-                description="Title del vehículo - Lado frontal"
-                required={true}
-              />
-              <DocumentUploadField 
-                id="titleBack" 
-                label="Título de Propiedad (Trasero)" 
-                description="Title del vehículo - Lado trasero"
-                required={true}
-              />
+                <h4 className="font-medium text-foreground">Detalles del Vehículo</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <DocumentUploadField id="windshieldSerial" label="Número de Serie del Parabrisas" description="Foto clara del número en el parabrisas" />
+                    <DocumentUploadField id="doorSticker" label="Sticker de la Puerta" description="Etiqueta de información en el marco de la puerta" />
+                </div>
             </div>
-          </div>
-
-          <div className="space-y-4">
-            <h4 className="font-medium text-foreground">Fotografías del Vehículo</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <DocumentUploadField 
-                id="vehiclePhoto1" 
-                label="Foto Frontal" 
-                description="Vista frontal completa del vehículo"
-              />
-              <DocumentUploadField 
-                id="vehiclePhoto2" 
-                label="Foto Trasera" 
-                description="Vista trasera completa del vehículo"
-              />
-              <DocumentUploadField 
-                id="vehiclePhoto3" 
-                label="Foto Lateral Izquierda" 
-                description="Vista lateral izquierda completa"
-              />
-              <DocumentUploadField 
-                id="vehiclePhoto4" 
-                label="Foto Lateral Derecha" 
-                description="Vista lateral derecha completa"
-              />
+            <div className="flex justify-end space-x-2 pt-4 border-t">
+                <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+                    Cancelar
+                </Button>
+                <Button type="submit" disabled={isSubmitting || loadingDocuments}>
+                    {isSubmitting ? 'Subiendo...' : 'Subir Documentos'}
+                </Button>
             </div>
-          </div>
-
-          <div className="space-y-4">
-            <h4 className="font-medium text-foreground">Detalles del Vehículo</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <DocumentUploadField 
-                id="windshieldSerial" 
-                label="Número de Serie del Parabrisas" 
-                description="Foto clara del número en el parabrisas"
-              />
-              <DocumentUploadField 
-                id="doorSticker" 
-                label="Sticker de la Puerta" 
-                description="Etiqueta de información en el marco de la puerta"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end space-x-2 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isSubmitting || loadingDocuments}>
-              {isSubmitting ? 'Subiendo...' : 'Subir Documentos'}
-            </Button>
-          </div>
         </form>
       </DialogContent>
     </Dialog>

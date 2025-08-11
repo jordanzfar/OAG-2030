@@ -130,7 +130,24 @@ export const useSupabaseData = () => {
     },
     [createRecord]
 );
-    
+
+const updateDocument = async (documentId, updates) => {
+  try {
+    const { data, error } = await supabase
+      .from('documents')
+      .update(updates)
+      .eq('id', documentId) // Actualiza la fila con este ID específico
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error updating document:', error);
+    return { success: false, error };
+  }
+};
+
     // Esta función ya tenía el patrón correcto, se deja como referencia.
     const createDeposit = useCallback(
         (userId, depositData) => {
@@ -160,6 +177,7 @@ export const useSupabaseData = () => {
         createDocument,     // Exporta la función corregida
         createChatMessage,
         createPowerBuyingRequest,
-        createDeposit
+        createDeposit,
+        updateDocument
     };
 };

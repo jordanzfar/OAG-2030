@@ -67,25 +67,43 @@ const AdminPowerBuyingPage = () => {
     const totalPages = Math.ceil(filteredRequests.length / ITEMS_PER_PAGE);
 
     const handleAction = async (action, paymentIntentId, requestId) => {
-        setActionLoading(requestId);
-        try {
-            const { error } = await supabase.functions.invoke(`${action}-deposit`, {
-                headers: { 'Authorization': `Bearer ${session.access_token}` },
-                body: { payment_intent_id: paymentIntentId },
-            });
-            if (error) throw new Error(error.message || "Ocurrió un error en la función.");
-            toast({
-                title: "Acción completada",
-                description: `El depósito ha sido ${action === 'capture' ? 'capturado' : 'cancelado'} con éxito.`,
-            });
-            fetchRequests();
-        } catch (error) {
-            const errorContext = error.context ? JSON.parse(error.context.text) : { error: "Error desconocido." };
-            toast({ variant: "destructive", title: "Error en la acción", description: errorContext.error });
-        } finally {
-            setActionLoading(null);
+    setActionLoading(requestId);
+    try {
+        const { error, data } = await supabase.functions.invoke(`${action}-deposit`, {
+            headers: { 'Authorization': `Bearer ${session.access_token}` },
+            // --- CORRECTION: Add request_id to the body ---
+            body: { 
+                payment_intent_id: paymentIntentId,
+                request_id: requestId // Add this line
+            },
+        });
+
+        // Use the 'data' object from the response to check for function-specific errors
+        if (data && data.error) {
+            throw new Error(data.error);
         }
-    };
+        
+        if (error) {
+            // Handle network or invocation errors
+            throw new Error(error.message || "Ocurrió un error en la función.");
+        }
+        
+        toast({
+            title: "Acción completada",
+            description: `El depósito ha sido ${action === 'capture' ? 'capturado' : 'cancelado'} con éxito.`,
+        });
+
+        fetchRequests(); // Refresh data after successful action
+    } catch (error) {
+        toast({ 
+            variant: "destructive", 
+            title: "Error en la acción", 
+            description: error.message 
+        });
+    } finally {
+        setActionLoading(null);
+    }
+};
     
     if (loading) {
         return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>;

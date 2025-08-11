@@ -4,7 +4,6 @@ import AnimatedNumber from './AnimatedNumber';
 import { Table, TableBody, TableCell, TableRow, TableFooter, TableHead } from "@/components/ui/table";
 
 const FeeCalculator = ({ fees }) => {
-  // Ya no necesitamos la comprobación 'if (!fees)' porque siempre recibirá un objeto.
 
   return (
     <motion.div 
@@ -47,11 +46,23 @@ const FeeCalculator = ({ fees }) => {
               <AnimatedNumber value={fees.processing_fees} />
             </TableCell>
           </TableRow>
+
+          {/* --- CÓDIGO AÑADIDO --- */}
+          {/* Esta fila solo aparecerá si 'fees.tax' es mayor que 0 */}
+          {fees.tax > 0 && (
+            <TableRow className="text">
+              <TableCell className="text-muted-foreground">Tax </TableCell>
+              <TableCell className="text-right ">
+                <AnimatedNumber value={fees.tax} />
+              </TableCell>
+            </TableRow>
+          )}
+          
         </TableBody>
         <TableFooter>
           <TableRow className="text-xl font-bold hover:bg-transparent">
             <TableHead>Total Estimado</TableHead>
-            <TableHead className="text-right text-primary">
+            <TableHead className="text-right text-primary text-yellow-600">
               <AnimatedNumber value={fees.total} />
             </TableHead>
           </TableRow>

@@ -122,7 +122,7 @@ const ProfilePage = () => {
                   id="full_name"
                   value={profileData.full_name}
                   onChange={(e) => handleInputChange('full_name', e.target.value)}
-                  disabled={!isEditing}
+                  disabled={true}
                   className="mt-1"
                 />
               </div>
