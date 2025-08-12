@@ -247,9 +247,11 @@ const InspectionsPage = () => {
     loadInspections();
   }, [loadInspections]);
 
-  const handleFormSubmit = async (data) => {
+
+const handleFormSubmit = async (data) => {
     if (!user) return;
 
+    // Prepara los datos de la inspección a partir del formulario
     let locationDetails = {};
     if (data.locationType === 'iaa' || data.locationType === 'copart') {
         const flatList = data.locationType === 'iaa' ? flatIaaLocations : flatCopartLocations;
@@ -274,26 +276,51 @@ const InspectionsPage = () => {
       status: 'pending_payment',
     };
     
-    const { success, error } = await createRecord('inspections', inspectionData);
+    try {
+      // 1. Crea el registro en la base de datos y pide explícitamente el 'id' de vuelta.
+      const { data: newInspection, error } = await supabase
+        .from('inspections')
+        .insert(inspectionData)
+        .select('id') // Solo necesitamos el ID, nada más.
+        .single();
+      
+      // 2. VERIFICACIÓN CRÍTICA: Se asegura de que la creación fue exitosa Y de que se obtuvo un ID.
+      if (error || !newInspection?.id) {
+        console.error("Error al crear la inspección o no se devolvió el ID:", error);
+        throw error || new Error("No se pudo obtener el ID de la nueva inspección para procesar el pago.");
+      }
+      
+      const inspectionId = newInspection.id;
+      
+      // 3. Prepara las URLs para Stripe, incluyendo el ID en la URL de éxito.
+      const successUrl = new URL(`/inspections/success?inspection_id=${inspectionId}`, window.location.origin).toString();
+      const cancelUrl = new URL('/dashboard/inspections', window.location.origin).toString();
 
-    if (success) {
-        const paymentLink = `https://buy.stripe.com/test_8x2eV69LA9v55yo366ebu00?stock=${data.stockNumber}`;
-        toast({
-            title: "Paso 1: Solicitud Registrada",
-            description: "Tu solicitud ha sido guardada. Completa el pago para procesarla.",
-        });
-        window.open(paymentLink, '_blank');
-        form.reset();
-        loadInspections();
-    } else {
-        console.error('Error submitting inspection:', error);
-        toast({
-            variant: "destructive",
-            title: "Error al Registrar",
-            description: "No se pudo registrar la solicitud. Por favor, inténtalo de nuevo.",
-        });
+      // 4. Llama a la Edge Function, ahora con la certeza de que tenemos un ID.
+      const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-service-checkout', {
+          body: { 
+              serviceId: 'inspection',
+              successUrl,
+              cancelUrl,
+              inspectionId: inspectionId, // Se pasa el ID verificado
+          },
+      });
+
+      if (checkoutError) throw checkoutError;
+      if (checkoutData.error) throw new Error(checkoutData.error);
+
+      // 5. Redirige al usuario a la página de pago de Stripe.
+      window.location.href = checkoutData.checkoutUrl;
+
+    } catch (err) {
+      console.error('Error en el proceso de solicitud:', err);
+      toast({
+          variant: "destructive",
+          title: "Error en la Solicitud",
+          description: err.message || "No se pudo procesar la solicitud. Inténtalo de nuevo.",
+      });
     }
-  };
+};
 
   return (
     <div className="space-y-8">

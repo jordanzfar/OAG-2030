@@ -27,6 +27,7 @@ import ChatPage from '@/pages/dashboard/ChatPage';
 import NotificationsPage from '@/pages/dashboard/NotificationsPage';
 import AuctionPage from '@/pages/dashboard/AuctionPage';
 import PaymentSuccessPage from './pages/PaymentSuccessPage'; 
+import InspectionPaymentSuccessPage from './pages/InspectionPaymentSuccessPage';
 
 
 // Páginas de Admin
@@ -113,7 +114,8 @@ function App() {
                                 <Route path="/login" element={<LoginPage />} />
                                 <Route path="/register" element={<RegistrationPage />} />
                                 <Route path="/" element={<HomePage />} />
-                                <Route path="/payment-success" element={<PaymentSuccessPage />} />
+                                <Route path="/payment-success" element={<InspectionPaymentSuccessPage />} /> {/* <-- MOVIDA AQUÍ */}
+
 
 
                                 {/* Rutas de Cliente */}
