@@ -12,7 +12,7 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
 const planPriceIds = {
  explorador: 'price_1Rv2s02LjLpO3yFTiJ3f767s', // Pega aquí el ID de PRECIO del plan Explorador
   comercial: 'price_1Rv2sh2LjLpO3yFT4NkYlRvq',   // Pega aquí el ID de PRECIO del plan Comercial
-  socio_pro: 'price_1Rv2s02LjLpO3yFTiJ3f767s',     // Pega aquí el ID de PRECIO del plan Socio PRO
+  socio_pro: 'price_1Rv2sx2LjLpO3yFTQijgwe8E',     // Pega aquí el ID de PRECIO del plan Socio PRO
 };
 
 Deno.serve(async (req) => {

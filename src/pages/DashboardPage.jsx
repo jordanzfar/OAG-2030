@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Activity, FileBadge, FileText, MessageSquare, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -9,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import BuyingPowerWidget from '@/components/dashboard/BuyingPowerWidget';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import VerificationBadge from '@/components/dashboard/VerificationBadge';
+import PlanBadge from '@/components/dashboard/PlanBadge'; // --- AÑADIDO ---
 
 const DashboardPage = () => {
     const { user, userRole, userProfile } = useAuth();
@@ -21,14 +21,10 @@ const DashboardPage = () => {
 
     useEffect(() => {
         const fetchDashboardData = async () => {
-            // ✅ CORRECCIÓN CLAVE:
-            // Si no hay usuario al momento de ejecutar, no estamos cargando nada.
-            // Debemos establecer `loading` a `false` y salir.
             if (!user) {
                 setLoading(false);
                 return;
             }
-
             setLoading(true);
             setError(null);
             try {
@@ -53,7 +49,7 @@ const DashboardPage = () => {
             }
         };
         fetchDashboardData();
-    }, [user]);
+    }, [user, supabase]); // Añadido supabase a las dependencias
 
     if (loading) {
         return (
@@ -80,11 +76,17 @@ const DashboardPage = () => {
             className="space-y-8"
         >
             <div>
-                <div className="flex items-center gap-3">
+                {/* --- SECCIÓN MODIFICADA --- */}
+                <div className="flex items-center gap-3 flex-wrap">
                     <h1 className="text-3xl font-bold text-foreground">Panel del Cliente</h1>
+                    {/* El badge de verificación se muestra si el usuario está verificado */}
                     {isVerified && <VerificationBadge isVerified={true} />}
+                    {/* El badge del plan se muestra si tenemos la información del perfil */}
+                    {userProfile && <PlanBadge planId={userProfile.membership_plan} />}
                 </div>
-                <p className="text-muted-foreground mt-1">Bienvenido a tu panel personal de Opulent Auto Gallery.</p>
+                <p className="text-muted-foreground mt-1">
+                    Bienvenido de nuevo, {userProfile?.full_name?.split(' ')[0] || 'Cliente'}.
+                </p>
             </div>
             
             <div className="w-full"> 
