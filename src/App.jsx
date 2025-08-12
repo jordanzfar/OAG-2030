@@ -26,6 +26,8 @@ import DocumentsPage from '@/pages/dashboard/DocumentsPage';
 import ChatPage from '@/pages/dashboard/ChatPage';
 import NotificationsPage from '@/pages/dashboard/NotificationsPage';
 import AuctionPage from '@/pages/dashboard/AuctionPage';
+import PaymentSuccessPage from './pages/PaymentSuccessPage'; 
+
 
 // Páginas de Admin
 import AdminDashboardPage from '@/pages/admin/AdminDashboardPage';
@@ -111,6 +113,8 @@ function App() {
                                 <Route path="/login" element={<LoginPage />} />
                                 <Route path="/register" element={<RegistrationPage />} />
                                 <Route path="/" element={<HomePage />} />
+                                <Route path="/payment-success" element={<PaymentSuccessPage />} />
+
 
                                 {/* Rutas de Cliente */}
                                 <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['client']}><DashboardLayout /></ProtectedRoute>}>
@@ -126,6 +130,7 @@ function App() {
                                     <Route path="notifications" element={<NotificationsPage />} />
                                     <Route path="auction" element={<AuctionPage />} />
                                     <Route path="verification" element={<VerificationPage />} />
+
                                 </Route>
 
                                 {/* Rutas de Admin */}

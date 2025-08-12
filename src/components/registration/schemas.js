@@ -1,20 +1,18 @@
-// src/components/registration/schemas.js
-
 import * as z from 'zod';
 import { isValidPhoneNumber } from 'react-phone-number-input';
 
-// Esta expresión regular ya impone una longitud mínima de 6 caracteres con {6,}
 const passwordValidation = new RegExp(
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/
 );
 
+// QUÉ CAMBIÓ: Se eliminó CUALQUIER validación de email contra la base de datos de este archivo.
+// POR QUÉ: No podemos usar hooks aquí. Este archivo ahora solo valida la forma y estructura de los datos.
 export const registrationSchema = z.object({
   fullName: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }).optional().or(z.literal('')),
   
-  // Permite que el campo sea opcional o un string vacío.
-  email: z.string().email("Correo electrónico no válido").optional().or(z.literal('')),
+  // La validación de email ahora solo comprueba el formato, no si existe en la BD.
+  email: z.string().email("Correo electrónico no válido").min(1, "Debes proporcionar un email o un teléfono."),
   
-  // ✅ Valida el formato del teléfono si se proporciona un valor.
   phone: z.string()
     .refine(value => !value || isValidPhoneNumber(value), {
       message: "El número de teléfono no es válido.",
@@ -35,14 +33,5 @@ export const registrationSchema = z.object({
 })
 .refine(data => data.password === data.confirmPassword, {
   message: "Las contraseñas no coinciden",
-  path: ["confirmPassword"], // El error se muestra en el campo de confirmación
-})
-.refine(data => {
-  // ✅ Comprueba que al menos uno de los dos campos (email o teléfono) tenga un valor.
-  return !!data.email || !!data.phone;
-}, {
-  message: "Debes proporcionar un email o un teléfono.",
-  // Asigna el error a un campo para que se muestre en la UI.
-  // Si ambos están vacíos, mostrar el error en el campo de email tiene sentido.
-  path: ["email"], 
+  path: ["confirmPassword"],
 });
